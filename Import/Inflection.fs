@@ -22,19 +22,12 @@ let private cartesianN l =
 
 let private mkRowOrColValues axes = axes |> List.map (fun a -> a.values |> List.map fst) |> cartesianN
 
-let rec private mergeRowColumn row column =
-    match row, column with
-    | [], [] -> []
-    | _::_, [] -> row
-    | [], _::_ -> column
-    | r::rs, c::cs -> [r; c] @ mergeRowColumn rs cs
-
 let private mkRows rowValues colValues inflection =
     rowValues |> List.map
         (fun r ->
             colValues |> List.map
                 (fun c ->
-                    let word = inflection |> List.find (fun i -> fst i = mergeRowColumn r c) |> snd
+                    let word = inflection |> List.tryFind (fun i -> Set.ofList (fst i) = Set.ofList (r @ c)) |> Option.map snd
                     html $"<td>{word}</td>"
                 )
         )
@@ -54,7 +47,7 @@ let private mkPrefix rowValues verAxesWithSpans =
         (fun r ->
             r |> List.map
                 (fun (v, (axes, span)) ->
-                    let word = axes.values |> List.find (fun (ind, _) -> ind = v) |> snd
+                    let word = axes.values |> List.tryFind (fun (ind, _) -> ind = v) |> Option.map snd
                     html $"<th rowspan=\"{span}\">{word}</th>"
                 )
         )
@@ -93,7 +86,7 @@ let wordInflectionTemplate axes inflection =
                     {axis.values |> List.map (fun (v, name) ->
                         html  $"<tr>
                                     <th>{name}</th>
-                                    <td>{inflection |> List.find (fun (key, _) -> key = [v]) |> snd}</td>
+                                    <td>{inflection |> List.tryFind (fun (key, _) -> key = [v]) |> Option.map snd}</td>
                                 </tr>
                             ")}
                 </table>

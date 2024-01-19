@@ -8,9 +8,10 @@
     <Compile Include="..\online-conlang-shared\SharedModels.fs" />
     <Compile Include="Foundation.fs" />
     <Compile Include="Import/Inflection.fs" />
-    <Compile Include="Templates/Axes.fs" />
     <Compile Include="Templates/Loading.fs" />
+    <Compile Include="Templates/Axes.fs" />
     <Compile Include="Templates/Term.fs" />
+    <Compile Include="Templates/Inflection.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
