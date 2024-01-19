@@ -1,15 +1,18 @@
 module OnlineConlangFront.Templates.Term
-
+open Browser
 open Lit
 
 open SharedModels
 
 open OnlineConlangFront.Foundation
 open OnlineConlangFront.Import.Inflection
+open OnlineConlangFront.Templates.Loading
 
 open Fable.Core
 
-let termTableTemplate axes terms =
+let el = document.getElementById("root")
+
+let rec termTableTemplate lid axes terms =
     let empty = [ html $"" ]
     html
         $"""
@@ -30,13 +33,26 @@ let termTableTemplate axes terms =
                                                 | Some inflection -> wordInflectionTemplate axes inflection
                                                 | None -> empty}</td>
                                         <td>{term.transcription}</td>
+                                        <td>
+                                            <button
+                                                @click={(fun _ ->
+                                                    Lit.ofPromise(postRebuildInflections lid term.id, placeholder=loadingTemplate) |> Lit.render el)}>
+                                                Refresh
+                                            </button>
+                                        </td>
                                     </tr>")}
             </table>
         """
 
-let termsTemplate lid =
+and postRebuildInflections lid tid =
+    promise {
+        do! server.rebuildInflections tid |> Async.StartAsPromise
+        return! termsTemplate lid
+    }
+
+and termsTemplate lid =
     promise {
         let! terms = server.getTerms lid |> Async.StartAsPromise
         let! axes = server.getAxes lid |> Async.StartAsPromise
-        return html $"<p>{termTableTemplate axes terms}</p>"
+        return html $"{termTableTemplate lid axes terms}"
     }

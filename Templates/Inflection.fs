@@ -1,6 +1,5 @@
 module OnlineConlangFront.Templates.Inflection
 
-open System
 open Fable.Core
 open Browser
 open Browser.Types
@@ -10,6 +9,8 @@ open SharedModels
 
 open OnlineConlangFront.Foundation
 
+open OnlineConlangFront.Templates.Loading
+
 // interface
 type Window =
     // function description
@@ -18,15 +19,24 @@ type Window =
 // wiring-up JavaScript and F# with [<Global>] and jsNative
 let [<Global>] window: Window = jsNative
 
+let el = document.getElementById("root")
+
 let emptyTransformation = { input = ""; output = ""; applyMultiple = false }
 
-[<HookComponent>]
-let suffixRuleTemplate (s : string) t =
-    let suffix, setSuffix = Hook.useState s
+[<LitElement("suffix-rule")>]
+let SuffixRule () =
+    let host, props =
+        LitElement.init (fun init ->
+            init.props <- {|
+                suffix = Prop.Of("")
+                transformation = Prop.Of(emptyTransformation, attribute = "")
+            |})
+
+    let suffix, setSuffix = Hook.useState props.suffix.Value
     let suffixRef = Hook.useRef<HTMLInputElement>()
-    let input, setInput = Hook.useState t.input
+    let input, setInput = Hook.useState props.transformation.Value.input
     let inputRef = Hook.useRef<HTMLInputElement>()
-    let output, setOutput = Hook.useState t.output
+    let output, setOutput = Hook.useState props.transformation.Value.output
     let outputRef = Hook.useRef<HTMLInputElement>()
     let applyMultipleRef = Hook.useRef<HTMLInputElement>()
     html
@@ -57,19 +67,40 @@ let suffixRuleTemplate (s : string) t =
                 <td>
                     <input {Lit.refValue applyMultipleRef}
                         type="checkbox"
-                        {if t.applyMultiple then "checked" else ""}>
+                        ?checked={props.transformation.Value.applyMultiple}>
+                </td>
+                <td>
+                    <button
+                        @click={fun _ ->
+                            let newInput = inputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newOutput = outputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newApplyMultiple = applyMultipleRef.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
+                            let newSuffix = suffixRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newT = { input = newInput; output = newOutput; applyMultiple = newApplyMultiple }
+                            let newR = AffixRule (Suffix (newSuffix, newT))
+                            host.dispatchCustomEvent ("rule-changed", newR)
+                        }>
+                        Save
+                    </button>
                 </td>
             </tr>
         </table>
         """
 
-[<HookComponent>]
-let prefixRuleTemplate (s : string) t =
-    let prefix, setPrefix = Hook.useState s
+[<LitElement("prefix-rule")>]
+let PrefixRule () =
+    let host, props =
+        LitElement.init (fun init ->
+            init.props <- {|
+                prefix = Prop.Of("")
+                transformation = Prop.Of(emptyTransformation, attribute = "")
+            |})
+
+    let prefix, setPrefix = Hook.useState props.prefix.Value
     let prefixRef = Hook.useRef<HTMLInputElement>()
-    let input, setInput = Hook.useState t.input
+    let input, setInput = Hook.useState props.transformation.Value.input
     let inputRef = Hook.useRef<HTMLInputElement>()
-    let output, setOutput = Hook.useState t.output
+    let output, setOutput = Hook.useState props.transformation.Value.output
     let outputRef = Hook.useRef<HTMLInputElement>()
     let applyMultipleRef = Hook.useRef<HTMLInputElement>()
     html
@@ -100,25 +131,51 @@ let prefixRuleTemplate (s : string) t =
                 <td>
                     <input {Lit.refValue applyMultipleRef}
                         type="checkbox"
-                        {if t.applyMultiple then "checked" else ""}>
+                        ?checked={props.transformation.Value.applyMultiple}>
+                </td>
+                <td>
+                    <button
+                        @click={fun _ ->
+                            let newInput = inputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newOutput = outputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newApplyMultiple = applyMultipleRef.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
+                            let newPrefix = prefixRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newT = { input = newInput; output = newOutput; applyMultiple = newApplyMultiple }
+                            let newR = AffixRule (Prefix (newPrefix, newT))
+                            host.dispatchCustomEvent ("rule-changed", newR)
+                        }>
+                        Save
+                    </button>
                 </td>
             </tr>
         </table>
         """
 
-[<HookComponent>]
-let infixRuleTemplate (s : string) t1 t2 =
-    let infix, setInfix = Hook.useState s
+[<LitElement("infix-rule")>]
+let InfixRule () =
+    let host, props =
+        LitElement.init (fun init ->
+            init.props <- {|
+                infix = Prop.Of("")
+                transformation1 = Prop.Of(emptyTransformation, attribute = "")
+                transformation2 = Prop.Of(emptyTransformation, attribute = "")
+                position = Prop.Of(0)
+            |})
+
+    let infix, setInfix = Hook.useState props.infix.Value
     let infixRef = Hook.useRef<HTMLInputElement>()
-    let input1, setInput1 = Hook.useState t1.input
+    let position, setPosition = Hook.useState props.position.Value
+    let positionRef = Hook.useRef<HTMLInputElement>()
+    let input1, setInput1 = Hook.useState props.transformation1.Value.input
     let inputRef1 = Hook.useRef<HTMLInputElement>()
-    let output1, setOutput1 = Hook.useState t1.output
+    let output1, setOutput1 = Hook.useState props.transformation1.Value.output
     let outputRef1 = Hook.useRef<HTMLInputElement>()
-    let input2, setInput2 = Hook.useState t2.input
+    let input2, setInput2 = Hook.useState props.transformation2.Value.input
     let inputRef2 = Hook.useRef<HTMLInputElement>()
-    let output2, setOutput2 = Hook.useState t2.output
+    let output2, setOutput2 = Hook.useState props.transformation2.Value.output
     let outputRef2 = Hook.useRef<HTMLInputElement>()
-    let applyMultipleRef = Hook.useRef<HTMLInputElement>()
+    let applyMultipleRef1 = Hook.useRef<HTMLInputElement>()
+    let applyMultipleRef2 = Hook.useRef<HTMLInputElement>()
     html
         $"""
         <table id="rule">
@@ -127,6 +184,7 @@ let infixRuleTemplate (s : string) t1 t2 =
                 <th>Output</th>
                 <th>Apply multiple</th>
                 <th>Infix</th>
+                <th>Position</th>
                 <th>Input</th>
                 <th>Output</th>
                 <th>Apply multiple</th>
@@ -143,14 +201,19 @@ let infixRuleTemplate (s : string) t1 t2 =
                         @keyup={EvVal setOutput1}>
                 </td>
                 <td>
-                    <input {Lit.refValue applyMultipleRef}
+                    <input {Lit.refValue applyMultipleRef1}
                         type="checkbox"
-                        {if t1.applyMultiple then "checked" else ""}>
+                        ?checked={props.transformation1.Value.applyMultiple}>
                 </td>
                 <td>
                     <input {Lit.refValue infixRef}
                         value={infix}
                         @keyup={EvVal setInfix}>
+                </td>
+                <td>
+                    <input {Lit.refValue positionRef} type=number
+                        value={position}
+                        @keyup={EvVal (setPosition << int)}>
                 </td>
                 <td>
                     <input {Lit.refValue inputRef2}
@@ -163,19 +226,44 @@ let infixRuleTemplate (s : string) t1 t2 =
                         @keyup={EvVal setOutput2}>
                 </td>
                 <td>
-                    <input {Lit.refValue applyMultipleRef}
+                    <input {Lit.refValue applyMultipleRef2}
                         type="checkbox"
-                        {if t2.applyMultiple then "checked" else ""}>
+                        ?checked={props.transformation2.Value.applyMultiple}>
+                </td>
+                <td>
+                    <button
+                        @click={fun _ ->
+                            let newInput1 = inputRef1.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newInput2 = inputRef2.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newOutput1 = outputRef1.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newOutput2 = outputRef1.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newApplyMultiple1 = applyMultipleRef1.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
+                            let newApplyMultiple2 = applyMultipleRef2.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
+                            let newInfix = infixRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newPosition = positionRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue "" |> int
+                            let newT1 = { input = newInput1; output = newOutput1; applyMultiple = newApplyMultiple1 }
+                            let newT2 = { input = newInput2; output = newOutput2; applyMultiple = newApplyMultiple2 }
+                            let newR = AffixRule (Infix (newInfix, newT1, newT2, newPosition))
+                            host.dispatchCustomEvent ("rule-changed", newR)
+                        }>
+                        Save
+                    </button>
                 </td>
             </tr>
         </table>
         """
 
-[<HookComponent>]
-let transformRuleTemplate t =
-    let input, setInput = Hook.useState t.input
+[<LitElement("transform-rule")>]
+let TransformRule () =
+    let host, props =
+        LitElement.init (fun init ->
+            init.props <- {|
+                transformation = Prop.Of(emptyTransformation, attribute = "")
+            |})
+
+    let input, setInput = Hook.useState props.transformation.Value.input
     let inputRef = Hook.useRef<HTMLInputElement>()
-    let output, setOutput = Hook.useState t.output
+    let output, setOutput = Hook.useState props.transformation.Value.output
     let outputRef = Hook.useRef<HTMLInputElement>()
     let applyMultipleRef = Hook.useRef<HTMLInputElement>()
     html
@@ -200,7 +288,19 @@ let transformRuleTemplate t =
                 <td>
                     <input {Lit.refValue applyMultipleRef}
                         type="checkbox"
-                        {if t.applyMultiple then "checked" else ""}>
+                        ?checked={props.transformation.Value.applyMultiple}>
+                </td>
+                <td>
+                    <button
+                        @click={fun _ ->
+                            let newInput = inputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newOutput = outputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
+                            let newApplyMultiple = applyMultipleRef.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
+                            let newT = { input = newInput; output = newOutput; applyMultiple = newApplyMultiple}
+                            host.dispatchCustomEvent ("rule-changed", TRule newT)
+                        }>
+                        Save
+                    </button>
                 </td>
             </tr>
         </table>
@@ -208,17 +308,32 @@ let transformRuleTemplate t =
 
 let ruleTemplate rule =
     match rule with
-    | TRule t -> transformRuleTemplate t
+    | TRule t ->
+        html $"<transform-rule .transformation={t}></transform-rule>"
     | AffixRule a ->
         match a with
-        | Suffix (s, t) -> suffixRuleTemplate s t
-        | Prefix (s, t) -> prefixRuleTemplate s t
-        | Infix (s, t1, t2, _) -> infixRuleTemplate s t1 t2
+        | Suffix (s, t) ->
+            html $"""
+                <suffix-rule suffix={s} .transformation={t}></suffix-rule>
+            """
+        | Prefix (s, t) ->
+            html $"""
+                <prefix-rule prefix={s} .transformation={t}></prefix-rule>
+            """
+        | Infix (s, t1, t2, pos) ->
+            html $"""
+                <infix-rule
+                    infix={s}
+                    position={pos}
+                    .transformation1={t1}
+                    .transformation2={t2}>
+                </infix-rule>
+            """
 
 
 [<LitElement("rule-element")>]
 let RuleElement () =
-    let _, props =
+    let host, props =
         LitElement.init (fun init ->
             init.props <- {|
                 rule = Prop.Of(TRule emptyTransformation, attribute = "")
@@ -245,13 +360,14 @@ let RuleElement () =
                             | "infix"  -> AffixRule (Infix ("", emptyTransformation, emptyTransformation, 0))
                             | _        -> TRule emptyTransformation
                     setRule t
+                    host.dispatchCustomEvent ("rule-changed", t)
                     }>
                 <option value="suffix" ?selected={ruleType = "suffix"}>Suffix</option>
                 <option value="prefix" ?selected={ruleType = "prefix"}>Prefix</option>
                 <option value="infix" ?selected={ruleType = "infix"}>Infix</option>
                 <option value="transformation" ?selected={ruleType = "transformation"}>Transformation</option>
             </select>
-            <div>
+            <div @rule-changed={fun (ev : CustomEvent) -> setRule (ev.detail :?> Rule)}>
                 {ruleTemplate rule}
             </div>
         """
@@ -273,11 +389,33 @@ let ruleElement (i, rule) =
             <rule-element>
         """
 
-[<LitElement("axis-rules")>]
-let AxisRules () =
+let rec postAxisRules lid avid newRules =
+    promise {
+        let! rules = server.getAxisRules avid |> Async.StartAsPromise
+        let oldRulesLength = Map.count rules
+        let newRulesLength = List.length newRules
+        if newRulesLength >= oldRulesLength then
+            let (part1, part2) = List.splitAt oldRulesLength newRules
+            let rulesCombined = List.zip (rules |> Map.toList) part1
+            for ((i, rule), newRule) in rulesCombined do
+                if rule <> newRule then do! server.putAxisRule i newRule |> Async.StartAsPromise
+            for rule in part2 do
+                do! server.postAxisRule avid rule |> Async.StartAsPromise
+        else
+            let (part1, part2) = rules |> Map.toList |> List.splitAt newRulesLength
+            let rulesCombined = List.zip part1 newRules
+            for ((i, rule), newRule) in rulesCombined do
+                if rule <> newRule then do! server.putAxisRule i newRule |> Async.StartAsPromise
+            for (i, _) in part2 do
+                do! server.deleteAxisRule i |> Async.StartAsPromise
+        return! inflectionTemplate lid
+    }
+
+and [<LitElement("axis-rules")>] AxisRules () =
     let _, props =
         LitElement.init (fun init ->
             init.props <- {|
+                language = Prop.Of(0)
                 rules = Prop.Of((0, ([] : (int * Rule) list)), attribute = "")
                 axesNames = Prop.Of(([] : (int * string) list), attribute = "")
             |})
@@ -286,6 +424,11 @@ let AxisRules () =
     let findAxisValueName avid =
         props.axesNames.Value |> List.tryFind (fun (k, _) -> k = avid)
                               |> Option.map snd |> Option.defaultValue ""
+
+    let replaceRule (i, r) =
+        let newRules = snd rules |> List.map (fun (i', r') -> if i = i' then (i, r) else (i', r'))
+        setRules (fst rules, newRules)
+
     html
         $"""
             <div>
@@ -293,24 +436,35 @@ let AxisRules () =
                 <ul>
                     {LitBindings.repeat (snd rules,
                                         (fun r -> $"{fst r}"),
-                                        (fun r i -> html $"<li>{i+1}: {ruleElement r}</li>"))
+                                        (fun r i -> html $"<li @rule-changed={(fun (ev : CustomEvent) ->
+                                                            let a = ev.detail :?> Rule
+                                                            replaceRule (fst r, a))}>
+                                                                {i+1}: {ruleElement r}
+                                                           </li>"))
                     }
                 </ul>
             </div>
             <button
                 @click={Ev(fun _ ->
-                    let nextInd = (snd rules |> List.map fst |> List.max) + 1
+                    let nextInd = snd rules |> List.map fst |> function
+                                    | [] -> 0
+                                    | l -> 1 + List.max l
                     let newRule = (nextInd, TRule emptyTransformation)
                     setRules (fst rules, (snd rules) @ [newRule])
                 )}
             >Add item</button>
             <button
-                @click={Ev(fun _ -> window.alert(rules.ToString()))}
+                @click={Ev(fun _ ->
+                    let lid = props.language.Value
+                    let avid = fst rules
+                    let newRules = snd rules |> List.map snd
+                    Lit.ofPromise(postAxisRules lid avid newRules, placeholder=loadingTemplate) |> Lit.render el
+                )}
             >Submit
             </button>
         """
 
-let inflectionTemplate lid  =
+and inflectionTemplate lid  =
     promise {
         let! inflections = server.getInflections lid |> Async.StartAsPromise
         let! axes = server.getAxes lid |> Async.StartAsPromise
@@ -330,6 +484,7 @@ let inflectionTemplate lid  =
                             <td>{axis.name}</td>
                             <td>{axis.inflections |> Map.map (
                                     fun k v -> html $"<axis-rules
+                                                        language={lid}
                                                         .rules={(k, List.mapi (fun i r -> (i, r)) v)}
                                                         .axesNames = {axes |> Seq.map (fun a -> a.values) |> Seq.concat |> Seq.toList}>
                                                       </axis-rules>"
