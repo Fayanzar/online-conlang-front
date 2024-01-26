@@ -6,3 +6,4 @@ fable_modules
 node_modules
 .fake
 *.js
+!JSModules/*

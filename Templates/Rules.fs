@@ -1,7 +1,6 @@
-module OnlineConlangFront.Templates.Inflection
+module OnlineConlangFront.Templates.Rules
 
 open Fable.Core
-open Browser
 open Browser.Types
 open Lit
 
@@ -9,19 +8,12 @@ open SharedModels
 
 open OnlineConlangFront.Foundation
 
+open OnlineConlangFront.Import.Inflection
 open OnlineConlangFront.Templates.Loading
 
-// interface
-type Window =
-    // function description
-    abstract alert: ?message: string -> unit
-
-// wiring-up JavaScript and F# with [<Global>] and jsNative
-let [<Global>] window: Window = jsNative
-
-let el = document.getElementById("root")
-
 let emptyTransformation = { input = ""; output = ""; applyMultiple = false }
+
+let emptyInflection = { language = 0; speechPart = ""; classes = Set.empty; axes = { axes = []; overrides = [] } }
 
 [<LitElement("suffix-rule")>]
 let SuffixRule () =
@@ -39,6 +31,7 @@ let SuffixRule () =
     let output, setOutput = Hook.useState props.transformation.Value.output
     let outputRef = Hook.useRef<HTMLInputElement>()
     let applyMultipleRef = Hook.useRef<HTMLInputElement>()
+
     html
         $"""
         <table id="rule">
@@ -68,6 +61,12 @@ let SuffixRule () =
                     <input {Lit.refValue applyMultipleRef}
                         type="checkbox"
                         ?checked={props.transformation.Value.applyMultiple}>
+                </td>
+                <td>
+                    <button
+                        @click={fun _ -> host.dispatchEvent ("rule-deleted")}>
+                        ❌
+                    </button>
                 </td>
                 <td>
                     <button
@@ -132,6 +131,12 @@ let PrefixRule () =
                     <input {Lit.refValue applyMultipleRef}
                         type="checkbox"
                         ?checked={props.transformation.Value.applyMultiple}>
+                </td>
+                <td>
+                    <button
+                        @click={fun _ -> host.dispatchEvent ("rule-deleted")}>
+                        ❌
+                    </button>
                 </td>
                 <td>
                     <button
@@ -232,6 +237,12 @@ let InfixRule () =
                 </td>
                 <td>
                     <button
+                        @click={fun _ -> host.dispatchEvent ("rule-deleted")}>
+                        ❌
+                    </button>
+                </td>
+                <td>
+                    <button
                         @click={fun _ ->
                             let newInput1 = inputRef1.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
                             let newInput2 = inputRef2.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
@@ -289,6 +300,12 @@ let TransformRule () =
                     <input {Lit.refValue applyMultipleRef}
                         type="checkbox"
                         ?checked={props.transformation.Value.applyMultiple}>
+                </td>
+                <td>
+                    <button
+                        @click={fun _ -> host.dispatchEvent ("rule-deleted")}>
+                        ❌
+                    </button>
                 </td>
                 <td>
                     <button
@@ -389,9 +406,9 @@ let ruleElement (i, rule) =
             <rule-element>
         """
 
-let rec postAxisRules lid avid newRules =
+let rec postAxisRules lid sp classes avid newRules =
     promise {
-        let! rules = server.getAxisRules avid |> Async.StartAsPromise
+        let! rules = server.getAxisRules sp classes avid |> Async.StartAsPromise
         let oldRulesLength = Map.count rules
         let newRulesLength = List.length newRules
         if newRulesLength >= oldRulesLength then
@@ -400,7 +417,7 @@ let rec postAxisRules lid avid newRules =
             for ((i, rule), newRule) in rulesCombined do
                 if rule <> newRule then do! server.putAxisRule i newRule |> Async.StartAsPromise
             for rule in part2 do
-                do! server.postAxisRule avid rule |> Async.StartAsPromise
+                do! server.postAxisRule sp classes avid rule |> Async.StartAsPromise
         else
             let (part1, part2) = rules |> Map.toList |> List.splitAt newRulesLength
             let rulesCombined = List.zip part1 newRules
@@ -408,7 +425,7 @@ let rec postAxisRules lid avid newRules =
                 if rule <> newRule then do! server.putAxisRule i newRule |> Async.StartAsPromise
             for (i, _) in part2 do
                 do! server.deleteAxisRule i |> Async.StartAsPromise
-        return! inflectionTemplate lid
+        return! rulesTemplate lid
     }
 
 and [<LitElement("axis-rules")>] AxisRules () =
@@ -416,9 +433,15 @@ and [<LitElement("axis-rules")>] AxisRules () =
         LitElement.init (fun init ->
             init.props <- {|
                 language = Prop.Of(0)
+                speechPart = Prop.Of("")
+                classes = Prop.Of((Seq.empty : seq<string>), attribute="")
                 rules = Prop.Of((0, ([] : (int * Rule) list)), attribute = "")
                 axesNames = Prop.Of(([] : (int * string) list), attribute = "")
             |})
+
+    let lid = props.language.Value
+    let sp = props.speechPart.Value
+    let classes = props.classes.Value
 
     let rules, setRules = Hook.useState props.rules.Value
     let findAxisValueName avid =
@@ -429,6 +452,10 @@ and [<LitElement("axis-rules")>] AxisRules () =
         let newRules = snd rules |> List.map (fun (i', r') -> if i = i' then (i, r) else (i', r'))
         setRules (fst rules, newRules)
 
+    let deleteRule i =
+        let newRules = snd rules |> List.filter (fun (i', _) -> i' <> i)
+        setRules (fst rules, newRules)
+
     html
         $"""
             <div>
@@ -437,8 +464,9 @@ and [<LitElement("axis-rules")>] AxisRules () =
                     {LitBindings.repeat (snd rules,
                                         (fun r -> $"{fst r}"),
                                         (fun r i -> html $"<li @rule-changed={(fun (ev : CustomEvent) ->
-                                                            let a = ev.detail :?> Rule
-                                                            replaceRule (fst r, a))}>
+                                                                let a = ev.detail :?> Rule
+                                                                replaceRule (fst r, a))}
+                                                               @rule-deleted={(fun _ -> deleteRule (fst r))}>
                                                                 {i+1}: {ruleElement r}
                                                            </li>"))
                     }
@@ -455,24 +483,203 @@ and [<LitElement("axis-rules")>] AxisRules () =
             >Add item</button>
             <button
                 @click={Ev(fun _ ->
-                    let lid = props.language.Value
                     let avid = fst rules
                     let newRules = snd rules |> List.map snd
-                    Lit.ofPromise(postAxisRules lid avid newRules, placeholder=loadingTemplate) |> Lit.render el
+                    Lit.ofPromise(postAxisRules lid sp classes avid newRules, placeholder=loadingTemplate) |> Lit.render root
                 )}
             >Submit
             </button>
         """
 
-and inflectionTemplate lid  =
+and postOverrideRules lid sp classes newOverrideRules =
+    promise {
+        let! overrideRules = server.getOverrideRules sp classes lid |> Async.StartAsPromise
+        let oldRulesLength = Map.count overrideRules
+        let newRulesLength = List.length newOverrideRules
+        if newRulesLength >= oldRulesLength then
+            let (part1, part2) = List.splitAt oldRulesLength newOverrideRules
+            let rulesCombined = List.zip (overrideRules |> Map.toList) part1
+            for ((i, rule), newRule) in rulesCombined do
+                if rule <> newRule then do! server.putOverrideRule i newRule |> Async.StartAsPromise
+            for rule in part2 do
+                do! server.postOverrideRule sp classes rule |> Async.StartAsPromise
+        else
+            let (part1, part2) = overrideRules |> Map.toList |> List.splitAt newRulesLength
+            let rulesCombined = List.zip part1 newOverrideRules
+            for ((i, rule), newRule) in rulesCombined do
+                if rule <> newRule then do! server.putOverrideRule i newRule |> Async.StartAsPromise
+            for (i, _) in part2 do
+                do! server.deleteOverrideRule i |> Async.StartAsPromise
+        return! rulesTemplate lid
+    }
+
+and [<LitElement("override-rules")>] OverrideRules () =
+    let _, props =
+        LitElement.init (fun init ->
+            init.props <- {|
+                language = Prop.Of(0)
+                overrideRules = Prop.Of(([] : list<list<int> * list<int * Rule>>), attribute = "")
+                axesNames = Prop.Of(([] : (int * string) list), attribute = "")
+                inflection = Prop.Of(emptyInflection, attribute="")
+            |})
+
+    let lid = props.language.Value
+    let sp = props.inflection.Value.speechPart
+    let classes = props.inflection.Value.classes |> Set.toSeq
+
+    let inflectionAxesValues = props.inflection.Value.axes.axes |> List.map (fun a ->
+        a.inflections |> Map.keys |> Seq.toList)
+
+    let findAxisValueName avid =
+        props.axesNames.Value |> List.tryFind (fun (k, _) -> k = avid)
+                              |> Option.map snd |> Option.defaultValue ""
+
+    let findAxesValues (axesNames : string) =
+        let axesNameList = axesNames.Split(" ") |> Seq.toList
+        axesNameList |> List.map (fun name ->
+            props.axesNames.Value |> List.tryFind (fun (_, v) -> v = name)
+                                  |> Option.map fst |> Option.defaultValue 0
+        )
+
+    let axesCombined = cartesianN inflectionAxesValues |> List.map (List.map findAxisValueName >> List.distinct)
+
+    let overrideRules, setOverrideRules = Hook.useState props.overrideRules.Value
+
+    let replaceOverrideRule axes (i, r) =
+        let newRules = overrideRules |> List.map (fun (axes', rules') ->
+            if Set axes' = Set axes then
+                (axes', rules' |> List.map (fun (i', r') -> if i = i' then (i, r) else (i', r')))
+            else
+                (axes', rules')
+        )
+        setOverrideRules newRules
+
+    let addRule axes newRule =
+        let newRules = overrideRules |> List.map (fun (axes', rules') ->
+            if Set axes' = Set axes then (axes', rules' @ [newRule])
+                            else (axes', rules')
+        )
+        setOverrideRules newRules
+
+    let deleteRule axes i =
+        let newRules = overrideRules |> List.map (fun (axes', rules') ->
+            if Set axes' = Set axes then (axes', rules' |> List.filter (fun (i', _) -> i' <> i))
+            else (axes', rules'))
+        setOverrideRules newRules
+
+    let deleteAxes axes =
+        let newRules = overrideRules |> List.filter (fun (axes', _) -> Set axes' <> Set axes)
+        setOverrideRules newRules
+
+    let replaceAxes axes newAxes =
+        let newRules = overrideRules |> List.map (fun (axes', rules') ->
+            if Set axes = Set axes' then (newAxes, rules')
+                                    else (axes', rules'))
+        setOverrideRules newRules
+
+    let addAxes () =
+        let newAxes = cartesianN inflectionAxesValues |> List.head
+        setOverrideRules (overrideRules @ [(newAxes, [])])
+
+    let rec ungroupList (l : ('a * 'b list) list) =
+        match l with
+        | [] -> []
+        | (k, v)::xs ->
+            match v with
+            | [] -> ungroupList xs
+            | y::ys -> (k, y)::ungroupList ((k, ys)::xs)
+
+    let rulesTemplate axes rules =
+        html $"""
+            <div>
+                <ul>
+                    {LitBindings.repeat (rules,
+                                        (fun r -> $"{fst r}"),
+                                        (fun r i -> html $"<li @rule-changed={(fun (ev : CustomEvent) ->
+                                                                let a = ev.detail :?> Rule
+                                                                replaceOverrideRule axes (fst r, a))}
+                                                               @rule-deleted={fun _ -> deleteRule axes (fst r)}>
+                                                                {i+1}: {ruleElement r}
+                                                            </li>"))
+                    }
+                </ul>
+            </div>
+            <button
+                @click={Ev(fun _ ->
+                    let nextInd = rules |> List.map fst |> function
+                                    | [] -> 0
+                                    | l -> 1 + List.max l
+                    let newRule = (nextInd, TRule emptyTransformation)
+                    addRule axes newRule
+                )}
+            >Add item</button>
+        """
+
+    let axesOption axesNames a =
+        html $"""
+            <option ?selected={Set axesNames = Set a}>
+                {a |> String.concat " "}
+            </option>"""
+
+    html $"""
+        <table>
+            <tr>
+                <th>Axes</th>
+                <th>Rule</th>
+            </tr>
+            {LitBindings.repeat (overrideRules,
+                                (fun (axes, _) -> axes |> List.map (fun a -> a.ToString()) |> String.concat ""),
+                                fun (axes, rules) _ ->
+                                    let axesNames = axes |> List.map findAxisValueName |> List.distinct
+                                    html  $"<tr>
+                                                <td>
+                                                    <button
+                                                        @click={fun _ -> deleteAxes axes}>
+                                                        ❌
+                                                    </button>
+                                                    <select
+                                                        @change={fun (ev : CustomEvent) ->
+                                                            let newAxesNames = ev.target.Value
+                                                            let newAxes = findAxesValues newAxesNames
+                                                            replaceAxes axes newAxes
+                                                        }>
+                                                        {axesCombined |> List.map (fun a ->
+                                                            axesOption axesNames a
+                                                        )}
+                                                    </select>
+                                                </td>
+                                                <td>{rulesTemplate axes rules}</td>
+                                            </tr>"
+                                )}
+                <tr>
+                    <td>
+                        <button
+                            @click={fun _ -> addAxes ()}>
+                            Add axes
+                        </button>
+                        <button
+                            @click={fun _ -> window.alert(overrideRules.ToString())}>
+                            Get Rules
+                        </button>
+                        <button
+                            @click={fun _ ->
+                                let rulesNoInd = overrideRules |> List.map (fun (axes, rules) -> (axes, List.map snd rules))
+                                let ungroupedRules = ungroupList rulesNoInd |> List.map (fun (axes, r) ->
+                                    { overrideRule = r; overrideAxes = axes })
+                                Lit.ofPromise (postOverrideRules lid sp classes ungroupedRules, placeholder=loadingTemplate) |> Lit.render root
+                                }>
+                            Submit
+                        </button>
+                    </td>
+                </tr>
+        </table>
+    """
+
+and rulesTemplate lid  =
     promise {
         let! inflections = server.getInflections lid |> Async.StartAsPromise
         let! axes = server.getAxes lid |> Async.StartAsPromise
-        let findAxisValueName vid =
-            let allValues = axes |> Seq.map (fun a -> a.values) |> Seq.concat
-            allValues |> Seq.tryFind (fun (k, _) -> k = vid) |> Option.map snd |> Option.defaultValue ""
-        let inflection = inflections |> Seq.find (fun i -> i.language = lid)
-        let axesTable (axis : Axis) =
+        let axesTable (axis : Axis) (inflection : InflectTForAPI) =
             html
                 $"""
                     <table>
@@ -485,6 +692,8 @@ and inflectionTemplate lid  =
                             <td>{axis.inflections |> Map.map (
                                     fun k v -> html $"<axis-rules
                                                         language={lid}
+                                                        speechPart={inflection.speechPart}
+                                                        .classes={inflection.classes |> Set.toSeq}
                                                         .rules={(k, List.mapi (fun i r -> (i, r)) v)}
                                                         .axesNames = {axes |> Seq.map (fun a -> a.values) |> Seq.concat |> Seq.toList}>
                                                       </axis-rules>"
@@ -502,17 +711,26 @@ and inflectionTemplate lid  =
                         <th>Axes</th>
                         <th>Overrides</th>
                     </tr>
-                    <tr>
-                        <td>{inflection.speechPart}</td>
-                        <td>{inflection.classes}</td>
-                        <td>{inflection.axes.axes |> List.map (fun a -> axesTable a)}</td>
-                        <td>{inflection.axes.overrides |> Map.map (
-                            fun k v ->
-                                let overrideAxes = k |> List.map findAxisValueName |> String.concat " "
-                                html $"{overrideAxes} : {v}<br>"
-                            ) |> Map.toList |> List.map snd}
-                        </td>
-                    </tr>
+                    {inflections |> Seq.map (fun inflection ->
+                        let overrideRules = inflection.axes.overrides |> List.groupBy fst
+                                            |> List.map (fun (k, v) ->
+                                            (k, v |> List.map snd |> List.concat |> List.mapi (fun i r -> (i, r))))
+                        html  $"
+                        <tr>
+                            <td>{inflection.speechPart}</td>
+                            <td>{inflection.classes}</td>
+                            <td>{inflection.axes.axes |> List.map (fun a -> axesTable a inflection)}</td>
+                            <td>
+                                <override-rules
+                                    language={lid}
+                                    .axesNames={axes |> Seq.map (fun a -> a.values) |> Seq.concat |> Seq.toList}
+                                    .overrideRules={overrideRules}
+                                    .inflection={inflection}>
+                                </override-rules>
+                            </td>
+                        </tr>
+                        "
+                    )}
                 </table>
             """
     }

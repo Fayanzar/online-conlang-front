@@ -9,9 +9,11 @@
     <Compile Include="Foundation.fs" />
     <Compile Include="Import/Inflection.fs" />
     <Compile Include="Templates/Loading.fs" />
+    <Compile Include="Templates/SpeechPart.fs" />
     <Compile Include="Templates/Axes.fs" />
     <Compile Include="Templates/Term.fs" />
-    <Compile Include="Templates/Inflection.fs" />
+    <Compile Include="Templates/Inflections.fs" />
+    <Compile Include="Templates/Rules.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

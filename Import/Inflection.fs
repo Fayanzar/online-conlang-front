@@ -4,19 +4,21 @@ open Lit
 
 open SharedModels
 
+open OnlineConlangFront.Foundation
+
 let rec private mkSpans axes =
     match axes with
     | [] -> []
     | [axis] -> [(axis, 1)]
-    | axis1::axis2::xs -> (axis1, List.length axis2.values) :: mkSpans xs
+    | axis1::axis2::xs -> (axis1, List.length axis2.values) :: mkSpans (axis2::xs)
 
-let rec private cartesian p1 p2 =
+let rec cartesian p1 p2 =
     match p1, p2 with
     | _, [] -> []
     | [], _ -> []
     | x::xs, _ -> (List.map (fun y -> x @ y) p2) @ (cartesian xs p2)
 
-let private cartesianN l =
+let cartesianN l =
     let lWrapped = List.map (List.map (fun l1 -> [l1])) l
     List.fold (fun acc l1 -> cartesian acc l1) [[]] lWrapped
 
@@ -27,7 +29,7 @@ let private mkRows rowValues colValues inflection =
         (fun r ->
             colValues |> List.map
                 (fun c ->
-                    let word = inflection |> List.tryFind (fun i -> Set.ofList (fst i) = Set.ofList (r @ c)) |> Option.map snd
+                    let word = inflection |> List.tryFind (fun i -> Set (fst i) = Set (r @ c)) |> Option.map snd
                     html $"<td>{word}</td>"
                 )
         )
@@ -52,23 +54,50 @@ let private mkPrefix rowValues verAxesWithSpans =
                 )
         )
 
+let rec private mkHeaderAxes horAxesWithSpans n =
+    match horAxesWithSpans with
+    | [] -> []
+    | (axis, span)::xs -> (List.replicate n (axis, span)) :: (mkHeaderAxes xs (List.length axis.values))
+
+
 let private mkInflectionTable axes inflection =
-    let axesSorted = List.sortBy (fun axis -> -List.length axis.values) axes
-    let (verAxes, horAxes) = List.foldBack (fun x (l,r) -> x::r, l) axesSorted ([], [])
+    let cookieHorAxes =
+        match getCookie "horizontal" with
+        | None -> []
+        | Some horAxes -> horAxes.Split "," |> Array.toList
+    let cookieVerAxes =
+        match getCookie "vertical" with
+        | None -> []
+        | Some verAxes -> verAxes.Split "," |> Array.toList
+    let axesSorted = List.sortBy (fun axis -> List.length axis.values) axes
+    let preHorAxes = cookieHorAxes
+                     |> List.map (fun axisName -> List.tryFind (fun axis -> axis.name = axisName) axesSorted)
+                     |> List.choose id
+    let preVerAxes = cookieVerAxes
+                     |> List.map (fun axisName -> List.tryFind (fun axis -> axis.name = axisName) axesSorted)
+                     |> List.choose id
+    let leftoverAxes = List.except (preHorAxes @ preVerAxes) axesSorted
+
+    let (leftoverHorAxes, leftoverVerAxes) = List.foldBack (fun x (l,r) -> x::r, l) leftoverAxes ([], [])
+    let horAxes = preHorAxes @ leftoverHorAxes
+    let verAxes = preVerAxes @ leftoverVerAxes
     let horAxesWithSpans = mkSpans horAxes
     let verAxesWithSpans = mkSpans verAxes
-    let colNames (axis, span) = axis.values |> List.map (fun (_, name) -> html $"<th colspan=\"{span}\">{name}</th>")
+    let headerAxes = mkHeaderAxes horAxesWithSpans 1
+    let colNames axes = axes |> List.map (fun (axis, span) ->
+        axis.values |> List.map (fun (_, name) -> html $"<th colspan=\"{span}\">{name}</th>")
+    )
     let tablePrefix = mkPrefix (mkRowOrColValues verAxes) verAxesWithSpans
     let rows = mkRows (mkRowOrColValues verAxes) (mkRowOrColValues horAxes) inflection
     let tableRows = List.fold2 (fun acc l1 l2 -> acc @ [ html $" <tr>{l1 @ l2}</tr>" ]) [] tablePrefix rows
     [ html
         $"""
             <table class="inflection">
-                {horAxesWithSpans |> List.map (fun (axis, span) ->
+                {headerAxes |> List.map (fun axes ->
                     html  $"<tr>
                                 <td colspan=\"{List.length verAxes}\">
                                 </td>
-                                {colNames (axis, span)}
+                                {colNames axes}
                             </tr>
                         "
                     )}
@@ -76,8 +105,10 @@ let private mkInflectionTable axes inflection =
             </table>
         """ ]
 
-let wordInflectionTemplate axes inflection =
-    match Seq.toList axes with
+let wordInflectionTemplate axes (inflectionAxes, inflection) =
+    let filteredAxes =
+        axes |> Seq.filter (fun a -> List.contains a.name inflectionAxes) |> Seq.toList
+    match filteredAxes with
     | [] -> [ html $"" ]
     | [axis] ->
         [ html
