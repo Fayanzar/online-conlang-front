@@ -20,7 +20,7 @@ let emptyTerm = { id = 0
 
 [<LitElement("term-table")>]
 let rec TermTable () =
-    let _, props =
+    let host, props =
         LitElement.init (fun init ->
             init.props <- {|
                 terms = Prop.Of(Seq.empty, attribute="")
@@ -29,6 +29,7 @@ let rec TermTable () =
                 speechParts = Prop.Of((Seq.empty : seq<string>), attribute="")
             |}
         )
+
     let terms, setTerms = Hook.useState props.terms.Value
     let lid = props.language.Value
     let axes = props.axes.Value
@@ -41,6 +42,7 @@ let rec TermTable () =
         setTerms newTerms
 
     let speechPartOption term sp = html $"<option ?selected={term.speechPart = sp}>{sp}</option>"
+    let classP cl = html $"<p>{cl}</p>"
 
     let empty = [ html $"" ]
     html $"""
@@ -49,6 +51,7 @@ let rec TermTable () =
                 <th></th>
                 <th>Word</th>
                 <th>Part of speech</th>
+                <th>Classes</th>
                 <th>Inflection</th>
                 <th>Transcription</th>
             </tr>
@@ -75,6 +78,11 @@ let rec TermTable () =
                                     speechPartOption term sp
                                 )}
                             </select>
+                        </td>
+                        <td>
+                            {term.wordClasses |> Seq.map (fun cl ->
+                                classP cl
+                            )}
                         </td>
                         <td>{match term.inflection with
                                 | Some termInflections -> List.map (wordInflectionTemplate axes) termInflections

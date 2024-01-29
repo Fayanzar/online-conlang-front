@@ -9,7 +9,7 @@ open SharedModels
 open OnlineConlangFront.Foundation
 open OnlineConlangFront.Templates.Loading
 
-let emptyInflection = { inflectionSpeechPart = ""; inflectionAxes = []; inflectionClasses = [] }
+let emptyInflection = { inflectionSpeechPart = ""; inflectionAxes = []; inflectionClasses = []; inflectionName = None }
 
 [<LitElement("inflection-axes")>]
 let InflectionAxes () =
@@ -149,6 +149,7 @@ let rec InflectionElement () =
         <table>
             <tr>
                 <th>Id</th>
+                <th>Name</th>
                 <th>Part of speech</th>
                 <th>Classes</th>
                 <th>Axes</th>
@@ -157,10 +158,24 @@ let rec InflectionElement () =
                 html  $"<tr>
                             <td>{k}</td>
                             <td>
+                                <input
+                                    value={inflection.inflectionName}
+                                    @keyup={fun (ev : CustomEvent) ->
+                                        let newInflection =
+                                            { inflectionSpeechPart = inflection.inflectionSpeechPart
+                                            ; inflectionName = Some ev.target.Value
+                                            ; inflectionAxes = inflection.inflectionAxes
+                                            ; inflectionClasses = inflection.inflectionClasses
+                                            }
+                                        setInflection k newInflection
+                                    }>
+                            </td>
+                            <td>
                                 <select
                                     @change={fun (ev : CustomEvent) ->
                                         let newInflection =
                                             { inflectionSpeechPart = ev.target.Value
+                                            ; inflectionName = inflection.inflectionName
                                             ; inflectionAxes = inflection.inflectionAxes
                                             ; inflectionClasses = inflection.inflectionClasses
                                             }
@@ -177,6 +192,7 @@ let rec InflectionElement () =
                                         let newClasses = ev.detail :?> string list
                                         let newInflection =
                                             { inflectionSpeechPart = inflection.inflectionSpeechPart
+                                            ; inflectionName = inflection.inflectionName
                                             ; inflectionAxes = inflection.inflectionAxes
                                             ; inflectionClasses = newClasses
                                             }
@@ -192,6 +208,7 @@ let rec InflectionElement () =
                                         let newAxes = ev.detail :?> int list
                                         let newInflection =
                                             { inflectionSpeechPart = inflection.inflectionSpeechPart
+                                            ; inflectionName = inflection.inflectionName
                                             ; inflectionAxes = newAxes
                                             ; inflectionClasses = inflection.inflectionClasses
                                             }

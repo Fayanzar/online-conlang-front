@@ -1,6 +1,8 @@
 module OnlineConlangFront.Import.Inflection
 
 open Lit
+open Browser.Types
+open Browser.CssExtensions
 
 open SharedModels
 
@@ -59,8 +61,30 @@ let rec private mkHeaderAxes horAxesWithSpans n =
     | [] -> []
     | (axis, span)::xs -> (List.replicate n (axis, span)) :: (mkHeaderAxes xs (List.length axis.values))
 
+[<LitElement("word-inflection-table")>]
+let InflectionTable () =
+    let _, props = LitElement.init (fun init ->
+        init.styles <- [
+            css $"""
+                .content {{
+                    max-height: 0;
+                    max-width: 0;
+                    overflow: hidden;
+                    transition: max-height 0.2s ease-out, max-width 0.2s ease-out;
+                }}
+            """
+        ]
+        init.props <- {|
+            axes = Prop.Of([], attribute="")
+            inflection = Prop.Of([], attribute="")
+            inflectionName = Prop.Of(None : string Option)
+        |}
+    )
 
-let private mkInflectionTable axes inflection =
+    let axes = props.axes.Value
+    let inflection = props.inflection.Value
+    let inflectionName = props.inflectionName.Value
+
     let cookieHorAxes =
         match getCookie "horizontal" with
         | None -> []
@@ -71,10 +95,10 @@ let private mkInflectionTable axes inflection =
         | Some verAxes -> verAxes.Split "," |> Array.toList
     let axesSorted = List.sortBy (fun axis -> List.length axis.values) axes
     let preHorAxes = cookieHorAxes
-                     |> List.map (fun axisName -> List.tryFind (fun axis -> axis.name = axisName) axesSorted)
+                     |> List.map (fun axisName -> List.tryFind (fun (axis : AxisForAPI) -> axis.name = axisName) axesSorted)
                      |> List.choose id
     let preVerAxes = cookieVerAxes
-                     |> List.map (fun axisName -> List.tryFind (fun axis -> axis.name = axisName) axesSorted)
+                     |> List.map (fun axisName -> List.tryFind (fun (axis : AxisForAPI) -> axis.name = axisName) axesSorted)
                      |> List.choose id
     let leftoverAxes = List.except (preHorAxes @ preVerAxes) axesSorted
 
@@ -90,9 +114,21 @@ let private mkInflectionTable axes inflection =
     let tablePrefix = mkPrefix (mkRowOrColValues verAxes) verAxesWithSpans
     let rows = mkRows (mkRowOrColValues verAxes) (mkRowOrColValues horAxes) inflection
     let tableRows = List.fold2 (fun acc l1 l2 -> acc @ [ html $" <tr>{l1 @ l2}</tr>" ]) [] tablePrefix rows
-    [ html
-        $"""
-            <table class="inflection">
+    [ html $"""
+        <button
+            @click={fun (ev : Event) ->
+                let t = ev.target :?> Element
+                let panel = t.nextElementSibling :?> HTMLElement
+                if (panel.style.maxHeight = "") then
+                    panel.style.maxHeight <- $"{panel.scrollHeight}px"
+                    panel.style.maxWidth <- $"{panel.scrollWidth}px"
+                else
+                    panel.style.maxHeight <- ""
+                    panel.style.maxWidth <- ""
+            }
+            >Show inflection: {inflectionName}</button>
+        <div class=content>
+            <table class=inflection>
                 {headerAxes |> List.map (fun axes ->
                     html  $"<tr>
                                 <td colspan=\"{List.length verAxes}\">
@@ -103,23 +139,30 @@ let private mkInflectionTable axes inflection =
                     )}
                 {tableRows}
             </table>
-        """ ]
+        </div>
+    """ ]
 
-let wordInflectionTemplate axes (inflectionAxes, inflection) =
+let wordInflectionTemplate (axes : AxisForAPI seq) (inflectionName, (inflectionAxes, inflection)) =
     let filteredAxes =
         axes |> Seq.filter (fun a -> List.contains a.name inflectionAxes) |> Seq.toList
     match filteredAxes with
     | [] -> [ html $"" ]
     | [axis] ->
-        [ html
-            $"""
-                <table class="inflection">
-                    {axis.values |> List.map (fun (v, name) ->
-                        html  $"<tr>
-                                    <th>{name}</th>
-                                    <td>{inflection |> List.tryFind (fun (key, _) -> key = [v]) |> Option.map snd}</td>
-                                </tr>
-                            ")}
-                </table>
-            """ ]
-    | axesList -> mkInflectionTable axesList inflection
+        [ html $"""
+            <table class=inflection>
+                {axis.values |> List.map (fun (v, name) ->
+                    html  $"<tr>
+                                <th>{name}</th>
+                                <td>{inflection |> List.tryFind (fun (key, _) -> key = [v]) |> Option.map snd}</td>
+                            </tr>
+                        ")}
+            </table>
+        """ ]
+    | axesList ->
+        [ html $"""
+            <word-inflection-table
+                inflectionName={inflectionName}
+                .inflection={inflection}
+                .axes={axesList}>
+            </word-inflection-table>
+        """ ]
