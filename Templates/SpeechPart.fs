@@ -69,14 +69,14 @@ let rec SpeechPartTable () =
 
 and postSpeechPart lid sp =
     promise {
-        do! server.postSpeechPart lid sp |> Async.StartAsPromise
+        do! server.postSpeechPart getJWTCookie lid sp |> Async.StartAsPromise
         return! speechPartTemplate lid
     }
 
 and putSpeechPart lid oldSP newSP =
     promise {
         window.alert($"{lid} {oldSP} {newSP}")
-        do! server.putSpeechPart lid oldSP newSP |> Async.StartAsPromise
+        do! server.putSpeechPart getJWTCookie lid oldSP newSP |> Async.StartAsPromise
         return! speechPartTemplate lid
     }
 

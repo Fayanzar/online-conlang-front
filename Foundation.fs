@@ -9,7 +9,7 @@ open Fable.Remoting.Client
 
 let server : IServer =
     Remoting.createApi()
-    |> Remoting.withBaseUrl "http://localhost:5000"
+    |> Remoting.withBaseUrl "https://localhost:5001"
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.buildProxy<IServer>
 
@@ -36,3 +36,8 @@ let getCookie name =
 
 let setCookie name value =
     document.cookie <- $"{name}={value}; SameSite=Lax"
+
+let getJWTCookie = getCookie "JWT" |> Option.defaultValue "" |> SecurityToken
+let setJWTCookie sjwt =
+    let jwt = match sjwt with SecurityToken t -> t
+    setCookie "JWT" jwt

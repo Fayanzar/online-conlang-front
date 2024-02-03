@@ -1,6 +1,5 @@
 module OnlineConlangFront.Router.FormatExpressions
 
-open System
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
 open FSharp.Core

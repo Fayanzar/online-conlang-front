@@ -245,13 +245,13 @@ let rec InflectionElement () =
 
 and putInflection lid iid inflection =
     promise {
-        do! server.putInflection iid inflection |> Async.StartAsPromise
+        do! server.putInflection getJWTCookie iid inflection |> Async.StartAsPromise
         return! inflectionsTemplate lid
     }
 
 and postInflection lid inflection =
     promise {
-        do! server.postInflection inflection |> Async.StartAsPromise
+        do! server.postInflection getJWTCookie inflection |> Async.StartAsPromise
         return! inflectionsTemplate lid
     }
 

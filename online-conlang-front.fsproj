@@ -9,8 +9,11 @@
     <Compile Include="./Foundation.fs" />
     <Compile Include="./Router/FormatExpressions.fs" />
     <Compile Include="./Router/Router.fs" />
+    <Compile Include="./Shared.fs" />
     <Compile Include="./Import/Inflection.fs" />
     <Compile Include="./Templates/Loading.fs" />
+    <Compile Include="./Templates/Login.fs" />
+    <Compile Include="./Templates/InflectionRules.fs" />
     <Compile Include="./Templates/SpeechPart.fs" />
     <Compile Include="./Templates/Axes.fs" />
     <Compile Include="./Templates/Term.fs" />

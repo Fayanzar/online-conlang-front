@@ -106,13 +106,13 @@ let rec TermTable () =
 
 and putTerm lid term =
     promise {
-        do! server.putTerm lid term.id term |> Async.StartAsPromise
+        do! server.putTerm getJWTCookie term.id term |> Async.StartAsPromise
         return! termsTemplate lid
     }
 
 and postRebuildInflections lid tid =
     promise {
-        do! server.rebuildInflections tid |> Async.StartAsPromise
+        do! server.rebuildInflections getJWTCookie tid |> Async.StartAsPromise
         return! termsTemplate lid
     }
 

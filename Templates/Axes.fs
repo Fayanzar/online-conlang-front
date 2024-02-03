@@ -276,30 +276,30 @@ and axesTemplate lid =
 
 and postAxisValue lid aid v =
     promise {
-        do! server.postAxisValue aid v |> Async.StartAsPromise
+        do! server.postAxisValue getJWTCookie aid v |> Async.StartAsPromise
         return! axesTemplate lid
     }
 
 and deleteAxisValue lid vid =
     promise {
-        do! server.deleteAxisValue vid |> Async.StartAsPromise
+        do! server.deleteAxisValue getJWTCookie vid |> Async.StartAsPromise
         return! axesTemplate lid
     }
 
 and putAxisValue lid avid v =
     promise {
-        do! server.putAxisValue avid v |> Async.StartAsPromise
+        do! server.putAxisValue getJWTCookie avid v |> Async.StartAsPromise
         return! axesTemplate lid
     }
 
 and putAxisName lid aid axis =
     promise {
-        do! server.putAxisName aid axis |> Async.StartAsPromise
+        do! server.putAxisName getJWTCookie aid axis |> Async.StartAsPromise
         return! axesTemplate lid
     }
 
 and postAxisName lid axis =
     promise {
-        do! server.postAxisName lid axis |> Async.StartAsPromise
+        do! server.postAxisName getJWTCookie lid axis |> Async.StartAsPromise
         return! axesTemplate lid
     }

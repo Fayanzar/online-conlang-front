@@ -1,7 +1,6 @@
 module OnlineConlangFront.Templates.Rules
 
 open Fable.Core
-open Browser
 open Browser.Types
 open Lit
 
@@ -11,597 +10,31 @@ open OnlineConlangFront.Foundation
 
 open OnlineConlangFront.Import.Inflection
 open OnlineConlangFront.Templates.Loading
+open OnlineConlangFront.Templates.InflectionRules
 
-let emptyTransformation = { input = ""; output = ""; applyMultiple = false }
+open System
 
-let emptyInflection = { language = 0
-                      ; speechPart = ""
-                      ; classes = Set.empty
-                      ; axes = { axes = []; overrides = [] }
-                      ; id = 0
-                      ; name = None
-                      }
-
-[<LitElement("suffix-rule")>]
-let SuffixRule () =
-    let host, props =
-        LitElement.init (fun init ->
-            init.styles <- [
-                css $"""
-                    input:not([type='checkbox']) {{
-                        width: 50px;
-                    }}
-                """
-            ]
-            init.props <- {|
-                rootName = Prop.Of("")
-                suffix = Prop.Of("")
-                transformation = Prop.Of(emptyTransformation, attribute = "")
-            |})
-
-    let suffix, setSuffix = Hook.useState props.suffix.Value
-    let suffixRef = Hook.useRef<HTMLInputElement>()
-    let input, setInput = Hook.useState props.transformation.Value.input
-    let inputRef = Hook.useRef<HTMLInputElement>()
-    let output, setOutput = Hook.useState props.transformation.Value.output
-    let outputRef = Hook.useRef<HTMLInputElement>()
-    let applyMultipleRef = Hook.useRef<HTMLInputElement>()
-
-    let rootName = props.rootName.Value
-
-    let rootElements =
-        match rootName with
-        | "" -> []
-        | _ ->
-            let elements = document.querySelectorAll(rootName)
-            seq { for i in 0..(elements.length-1) -> elements.Item i } |> Seq.toList
-
-    let removeDraggable () =
-        for el in rootElements do
-            let ruleParents = el.shadowRoot.querySelectorAll "div.rule-parent"
-            for i in 0..(ruleParents.length - 1) do
-                let parent = ruleParents.Item i
-                parent.setAttribute ("draggable", "false")
-
-    let addDraggable () =
-        for el in rootElements do
-            let ruleParents = el.shadowRoot.querySelectorAll "div.rule-parent"
-            for i in 0..(ruleParents.length - 1) do
-                let parent = ruleParents.Item i
-                parent.setAttribute ("draggable", "true")
-
-    let onRuleChanged () =
-        let newInput = inputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newOutput = outputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newApplyMultiple = applyMultipleRef.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
-        let newSuffix = suffixRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newT = { input = newInput; output = newOutput; applyMultiple = newApplyMultiple }
-        let newR = AffixRule (Suffix (newSuffix, newT))
-        host.dispatchCustomEvent ("rule-changed", newR)
-
-    html
-        $"""
-            word-
-            <input {Lit.refValue suffixRef}
-                value={suffix}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (e : Event) ->
-                    setSuffix e.target.Value
-                    onRuleChanged ()
-                }>
-            ;
-            <input {Lit.refValue inputRef}
-                value={input}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (e : Event) ->
-                    setInput e.target.Value
-                    onRuleChanged ()
-                }>
-            →
-            <input {Lit.refValue outputRef}
-                value={output}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (e : Event) ->
-                    setOutput e.target.Value
-                    onRuleChanged ()
-                }>
-            <label>w₁→w₂→…→wₙ</label>
-            <input {Lit.refValue applyMultipleRef}
-                type="checkbox"
-                ?checked={props.transformation.Value.applyMultiple}>
-            <button
-                @click={fun _ -> host.dispatchEvent ("rule-deleted")}>
-                ❌
-            </button>
-        """
-
-[<LitElement("prefix-rule")>]
-let PrefixRule () =
-    let host, props =
-        LitElement.init (fun init ->
-            init.styles <- [
-                css $"""
-                    input:not([type='checkbox']) {{
-                        width: 50px;
-                    }}
-                """
-            ]
-            init.props <- {|
-                rootName = Prop.Of("")
-                prefix = Prop.Of("")
-                transformation = Prop.Of(emptyTransformation, attribute = "")
-            |})
-
-    let prefix, setPrefix = Hook.useState props.prefix.Value
-    let prefixRef = Hook.useRef<HTMLInputElement>()
-    let input, setInput = Hook.useState props.transformation.Value.input
-    let inputRef = Hook.useRef<HTMLInputElement>()
-    let output, setOutput = Hook.useState props.transformation.Value.output
-    let outputRef = Hook.useRef<HTMLInputElement>()
-    let applyMultipleRef = Hook.useRef<HTMLInputElement>()
-
-    let rootName = props.rootName.Value
-
-    let rootElements =
-        match rootName with
-        | "" -> []
-        | _ ->
-            let elements = document.querySelectorAll(rootName)
-            seq { for i in 0..(elements.length-1) -> elements.Item i } |> Seq.toList
-
-    let removeDraggable () =
-        for el in rootElements do
-            let ruleParents = el.shadowRoot.querySelectorAll "div.rule-parent"
-            for i in 0..(ruleParents.length - 1) do
-                let parent = ruleParents.Item i
-                parent.setAttribute ("draggable", "false")
-
-    let addDraggable () =
-        for el in rootElements do
-            let ruleParents = el.shadowRoot.querySelectorAll "div.rule-parent"
-            for i in 0..(ruleParents.length - 1) do
-                let parent = ruleParents.Item i
-                parent.setAttribute ("draggable", "true")
-
-    let onRuleChanged () =
-        let newInput = inputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newOutput = outputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newApplyMultiple = applyMultipleRef.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
-        let newPrefix = prefixRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newT = { input = newInput; output = newOutput; applyMultiple = newApplyMultiple }
-        let newR = AffixRule (Prefix (newPrefix, newT))
-        host.dispatchCustomEvent ("rule-changed", newR)
-    html
-        $"""
-            <input {Lit.refValue prefixRef}
-                value={prefix}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (e : Event) ->
-                    setPrefix e.target.Value
-                    onRuleChanged ()
-                }>
-            -word;
-            <input {Lit.refValue inputRef}
-                value={input}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (e : Event) ->
-                    setInput e.target.Value
-                    onRuleChanged ()
-                }>
-            →
-            <input {Lit.refValue outputRef}
-                value={output}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (e : Event) ->
-                    setOutput e.target.Value
-                    onRuleChanged ()
-                }>
-
-            <label>w₁→w₂→…→wₙ</label>
-            <input {Lit.refValue applyMultipleRef}
-                type="checkbox"
-                ?checked={props.transformation.Value.applyMultiple}>
-            <button
-                @click={fun _ -> host.dispatchEvent ("rule-deleted")}>
-                ❌
-            </button>
-        """
-
-[<LitElement("infix-rule")>]
-let InfixRule () =
-    let host, props =
-        LitElement.init (fun init ->
-            init.styles <- [
-                css $"""
-                    input:not([type='checkbox']) {{
-                        width: 50px;
-                    }}
-                """
-            ]
-            init.props <- {|
-                rootName = Prop.Of("")
-                infix = Prop.Of("")
-                transformation1 = Prop.Of(emptyTransformation, attribute = "")
-                transformation2 = Prop.Of(emptyTransformation, attribute = "")
-                position = Prop.Of(0)
-            |})
-
-    let infix, setInfix = Hook.useState props.infix.Value
-    let infixRef = Hook.useRef<HTMLInputElement>()
-    let position, setPosition = Hook.useState props.position.Value
-    let positionRef = Hook.useRef<HTMLInputElement>()
-    let input1, setInput1 = Hook.useState props.transformation1.Value.input
-    let inputRef1 = Hook.useRef<HTMLInputElement>()
-    let output1, setOutput1 = Hook.useState props.transformation1.Value.output
-    let outputRef1 = Hook.useRef<HTMLInputElement>()
-    let input2, setInput2 = Hook.useState props.transformation2.Value.input
-    let inputRef2 = Hook.useRef<HTMLInputElement>()
-    let output2, setOutput2 = Hook.useState props.transformation2.Value.output
-    let outputRef2 = Hook.useRef<HTMLInputElement>()
-    let applyMultipleRef1 = Hook.useRef<HTMLInputElement>()
-    let applyMultipleRef2 = Hook.useRef<HTMLInputElement>()
-
-    let rootName = props.rootName.Value
-
-    let rootElements =
-        match rootName with
-        | "" -> []
-        | _ ->
-            let elements = document.querySelectorAll(rootName)
-            seq { for i in 0..(elements.length-1) -> elements.Item i } |> Seq.toList
-
-    let removeDraggable () =
-        for el in rootElements do
-            let ruleParents = el.shadowRoot.querySelectorAll "div.rule-parent"
-            for i in 0..(ruleParents.length - 1) do
-                let parent = ruleParents.Item i
-                parent.setAttribute ("draggable", "false")
-
-    let addDraggable () =
-        for el in rootElements do
-            let ruleParents = el.shadowRoot.querySelectorAll "div.rule-parent"
-            for i in 0..(ruleParents.length - 1) do
-                let parent = ruleParents.Item i
-                parent.setAttribute ("draggable", "true")
-
-    let onRuleChanged () =
-        let newInput1 = inputRef1.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newInput2 = inputRef2.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newOutput1 = outputRef1.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newOutput2 = outputRef1.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newApplyMultiple1 = applyMultipleRef1.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
-        let newApplyMultiple2 = applyMultipleRef2.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
-        let newInfix = infixRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newPosition = positionRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue "" |> int
-        let newT1 = { input = newInput1; output = newOutput1; applyMultiple = newApplyMultiple1 }
-        let newT2 = { input = newInput2; output = newOutput2; applyMultiple = newApplyMultiple2 }
-        let newR = AffixRule (Infix (newInfix, newT1, newT2, newPosition))
-        host.dispatchCustomEvent ("rule-changed", newR)
-
-    html
-        $"""
-            <input {Lit.refValue inputRef1}
-                value={input1}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (ev : Event) ->
-                    setInput1 ev.target.Value
-                    onRuleChanged ()
-                }>
-            →
-            <input {Lit.refValue outputRef1}
-                value={output1}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (ev : Event) ->
-                    setOutput1 ev.target.Value
-                    onRuleChanged ()
-                }>
-
-            <label>w₁→w₂→…→wₙ</label>
-            <input {Lit.refValue applyMultipleRef1}
-                type="checkbox"
-                ?checked={props.transformation1.Value.applyMultiple}
-                @click={fun _ -> onRuleChanged ()}>
-
-            ; w<
-            <input {Lit.refValue infixRef}
-                value={infix}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (ev : Event) ->
-                    setInfix ev.target.Value
-                    onRuleChanged ()
-                }>
-
-            <label>ᵢ</label>
-            <input {Lit.refValue positionRef} type=number
-                value={position}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (ev : Event) ->
-                    ev.target.Value |> int |> setPosition
-                    onRuleChanged ()
-                }>
-            >ord;
-
-            <input {Lit.refValue inputRef2}
-                value={input2}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (ev : Event) ->
-                    setInput2 ev.target.Value
-                    onRuleChanged ()
-                }>
-            →
-            <input {Lit.refValue outputRef2}
-                value={output2}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (ev : Event) ->
-                    setOutput2 ev.target.Value
-                    onRuleChanged ()
-                }>
-
-            <label>w₁→w₂→…→wₙ</label>
-            <input {Lit.refValue applyMultipleRef2}
-                type="checkbox"
-                ?checked={props.transformation2.Value.applyMultiple}
-                @click={fun _ -> onRuleChanged ()}>
-            <button
-                @click={fun _ -> host.dispatchEvent ("rule-deleted")}>
-                ❌
-            </button>
-        """
-
-[<LitElement("transform-rule")>]
-let TransformRule () =
-    let host, props =
-        LitElement.init (fun init ->
-            init.styles <- [
-                css $"""
-                    input:not([type='checkbox']) {{
-                        width: 50px;
-                    }}
-                """
-            ]
-            init.props <- {|
-                rootName = Prop.Of("")
-                transformation = Prop.Of(emptyTransformation, attribute = "")
-            |})
-
-    let input, setInput = Hook.useState props.transformation.Value.input
-    let inputRef = Hook.useRef<HTMLInputElement>()
-    let output, setOutput = Hook.useState props.transformation.Value.output
-    let outputRef = Hook.useRef<HTMLInputElement>()
-    let applyMultipleRef = Hook.useRef<HTMLInputElement>()
-
-    let rootName = props.rootName.Value
-
-    let rootElements =
-        match rootName with
-        | "" -> []
-        | _ ->
-            let elements = document.querySelectorAll(rootName)
-            seq { for i in 0..(elements.length-1) -> elements.Item i } |> Seq.toList
-
-    let removeDraggable () =
-        for el in rootElements do
-            let ruleParents = el.shadowRoot.querySelectorAll "div.rule-parent"
-            for i in 0..(ruleParents.length - 1) do
-                let parent = ruleParents.Item i
-                parent.setAttribute ("draggable", "false")
-
-    let addDraggable () =
-        for el in rootElements do
-            let ruleParents = el.shadowRoot.querySelectorAll "div.rule-parent"
-            for i in 0..(ruleParents.length - 1) do
-                let parent = ruleParents.Item i
-                parent.setAttribute ("draggable", "true")
-
-    let onRuleChanged () =
-        let newInput = inputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newOutput = outputRef.Value |> Option.map (fun v -> v.value) |> Option.defaultValue ""
-        let newApplyMultiple = applyMultipleRef.Value |> Option.map (fun v -> v.checked) |> Option.defaultValue false
-        let newT = { input = newInput; output = newOutput; applyMultiple = newApplyMultiple}
-        host.dispatchCustomEvent ("rule-changed", TRule newT)
-
-    html
-        $"""
-            <input {Lit.refValue inputRef}
-                value={input}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (ev : Event) ->
-                    setInput (ev.target.Value)
-                    onRuleChanged ()
-                }>
-            →
-            <input {Lit.refValue outputRef}
-                value={output}
-                @mousedown={fun (e : Event) ->
-                    e.stopPropagation()
-                    removeDraggable()
-                }
-                @mouseup={fun _ ->
-                    addDraggable()
-                }
-                @keyup={fun (ev : Event) ->
-                    setOutput (ev.target.Value)
-                    onRuleChanged ()
-                }>
-
-            <label>w₁→w₂→…→wₙ</label>
-            <input {Lit.refValue applyMultipleRef}
-                type="checkbox"
-                ?checked={props.transformation.Value.applyMultiple}
-                @click={fun _ -> onRuleChanged ()}>
-
-            <button
-                @click={fun _ -> host.dispatchEvent ("rule-deleted")}>
-                ❌
-            </button>
-        """
-
-let ruleTemplate rule rootName =
+let rulePresentAbsentClasses rule =
     match rule with
-    | TRule t ->
-        html $"<transform-rule .transformation={t} rootName={rootName}></transform-rule>"
-    | AffixRule a ->
-        match a with
-        | Suffix (s, t) ->
-            html $"""
-                <suffix-rule suffix={s} .transformation={t} rootName={rootName}></suffix-rule>
-            """
-        | Prefix (s, t) ->
-            html $"""
-                <prefix-rule prefix={s} .transformation={t} rootName={rootName}></prefix-rule>
-            """
-        | Infix (s, t1, t2, pos) ->
-            html $"""
-                <infix-rule
-                    infix={s}
-                    position={pos}
-                    rootName={rootName}
-                    .transformation1={t1}
-                    .transformation2={t2}>
-                </infix-rule>
-            """
+    | TRule _ -> ("transformation", [| "infix"; "prefix"; "suffix" |])
+    | AffixRule ar ->
+        match ar with
+        | Prefix _ -> ("prefix", [| "infix"; "suffix"; "transformation" |])
+        | Suffix _ -> ("suffix", [| "infix"; "prefix"; "transformation" |])
+        | Infix  _ -> ("infix", [| "suffix"; "prefix"; "transformation" |])
 
-[<LitElement("rule-element")>]
-let RuleElement () =
-    let host, props =
-        LitElement.init (fun init ->
-            init.props <- {|
-                rootName = Prop.Of("")
-                rule = Prop.Of(TRule emptyTransformation, attribute = "")
-                ruleType = Prop.Of("transformation")
-                ruleId = Prop.Of(0)
-            |})
+let changeBackground (ev : CustomEvent) =
+    let el = (ev.target :?> HTMLElement).parentElement
+    printfn "%A" el.nodeName
+    let classes = rulePresentAbsentClasses (ev.detail :?> Rule)
+    el.classList.remove (snd classes)
+    el.classList.add (fst classes)
 
-    let rule, setRule = Hook.useState props.rule.Value
-    let ruleType = props.ruleType.Value
-
-    let ruleRef = Hook.useRef<HTMLSelectElement>()
-
-    html
-        $"""
-            <select {Lit.refValue ruleRef}
-                @change={fun _ ->
-                    let t =
-                        match ruleRef.Value with
-                        | None -> TRule emptyTransformation
-                        | Some v ->
-                            match v.value with
-                            | "suffix" -> AffixRule (Suffix ("", emptyTransformation))
-                            | "prefix" -> AffixRule (Prefix ("", emptyTransformation))
-                            | "infix"  -> AffixRule (Infix ("", emptyTransformation, emptyTransformation, 0))
-                            | _        -> TRule emptyTransformation
-                    setRule t
-                    host.dispatchCustomEvent ("rule-changed", t)
-                    }>
-                <option value="suffix" ?selected={ruleType = "suffix"}>Suffix</option>
-                <option value="prefix" ?selected={ruleType = "prefix"}>Prefix</option>
-                <option value="infix" ?selected={ruleType = "infix"}>Infix</option>
-                <option value="transformation" ?selected={ruleType = "transformation"}>Transformation</option>
-            </select>
-            <div @rule-changed={fun (ev : CustomEvent) -> setRule (ev.detail :?> Rule)}
-                style="display: inline-block;">
-                {ruleTemplate rule props.rootName.Value}
-            </div>
-        """
-
-let getRuleType r =
-    match r with
-    | TRule _ -> "transformation"
-    | AffixRule a ->
-        match a with
-        | Suffix _ -> "suffix"
-        | Prefix _ -> "prefix"
-        | Infix _  -> "infix"
-
-let ruleElement (i, rule) rootName =
-    let ruleType = getRuleType rule
-    html
-        $"""
-            <rule-element .rule={rule} ruleType={ruleType} ruleId={i} rootName={rootName}>
-            <rule-element>
-        """
+let space = " "
 
 let rec postAxisRules lid iid avid newRules =
     promise {
-        do! server.postAxisRules iid avid newRules |> Async.StartAsPromise
+        do! server.postAxisRules getJWTCookie iid avid newRules |> Async.StartAsPromise
         return! rulesTemplate lid
     }
 
@@ -609,10 +42,23 @@ and [<LitElement("axis-rules")>] AxisRules () =
     let _, props =
         LitElement.init (fun init ->
             init.styles <- [
+                yield! OnlineConlangFront.Shared.styles
+
                 css $"""
                     div.axis-rules {{
-                        border-bottom: 1px solid;
                         padding: 5px 5px 5px 5px;
+                    }}
+
+                    div.rule-container {{
+                        padding: 5px 5px 5px 5px;
+                    }}
+
+                    .rule-parent.dragover {{
+                        border-top: 2px dashed white;
+                    }}
+
+                    .rule-container.dragover {{
+                        border-bottom: 2px dashed white;
                     }}
                 """
             ]
@@ -624,9 +70,8 @@ and [<LitElement("axis-rules")>] AxisRules () =
             |})
 
     let lid = props.language.Value
-    let sp = props.inflection.Value.speechPart
-    let classes = props.inflection.Value.classes
     let iid = props.inflection.Value.id
+    let uuid = Guid.NewGuid()
 
     let rules, setRules = Hook.useState props.rules.Value
     let findAxisValueName avid =
@@ -641,23 +86,132 @@ and [<LitElement("axis-rules")>] AxisRules () =
         let newRules = snd rules |> List.filter (fun (i', _) -> i' <> i)
         setRules (fst rules, newRules)
 
+    let onDragStart i (ev : DragEvent) =
+        ev.dataTransfer.clearData() |> ignore
+        ev.dataTransfer.setData("text/plain", $"{uuid},{i}")
+
+    let validateData (ev : DragEvent) =
+        let data = ev.dataTransfer.getData("text").Split(",")
+        match data with
+        | [| uuid'; ind' |] when uuid' = uuid.ToString() -> Some ind'
+        | _ -> None
+
+    let onDrop i (ev : DragEvent) =
+        match validateData ev with
+        | Some ind' ->
+            ev.preventDefault()
+            let ruleI = ind' |> int
+            let orule = List.tryFind (fun (i', _) -> i' = ruleI) (snd rules)
+            match orule with
+            | None -> ()
+            | Some rule ->
+                let filteredRules = List.except [rule] (snd rules)
+                let oruleIndex = List.tryFindIndex (fun (i', _) -> i' = i) filteredRules
+                match oruleIndex with
+                | None -> ()
+                | Some ruleIndex ->
+                    let newRules = List.insertAt ruleIndex rule filteredRules
+                    setRules (fst rules, newRules)
+        | _ -> ()
+
     let ruleParentClass = "rule-parent"
     let rootName = "axis-rules"
+    let moveEffect = "move"
+    let dragoverClass = "dragover"
+
+    let rec removeClassAllParents (el : HTMLElement) cl =
+        el.classList.remove cl
+        match el.parentElement with
+        | null -> ()
+        | parent -> removeClassAllParents parent cl
+
+    let onDragEnter (ev : DragEvent) =
+        match validateData ev with
+        | Some _ ->
+            let el = ev.target :?> HTMLElement
+            if el.classList.contains "rule-container" || el.classList.contains "rule-parent" then
+                ev.stopPropagation()
+                el.classList.add dragoverClass
+        | _ -> ()
+
+    let onDragLeave isDrop (ev : DragEvent) =
+        match validateData ev with
+        | Some _ ->
+            let el = ev.target :?> HTMLElement
+            let rect = el.getBoundingClientRect()
+            let isInside = ev.clientX < rect.right
+                           && ev.clientX > rect.left
+                           && ev.clientY < rect.bottom
+                           && ev.clientY > rect.top
+            if isDrop then
+                removeClassAllParents el [| dragoverClass |]
+            else
+                if el.classList.contains "rule-parent" && (not isInside) then
+                    ev.stopPropagation()
+                    el.classList.remove dragoverClass
+                if el.classList.contains "rule-container" then
+                    ev.stopPropagation()
+                    el.classList.remove dragoverClass
+        | _ -> ()
+
+    let onDropLast (ev : DragEvent) =
+        match validateData ev with
+        | Some ind' ->
+            ev.preventDefault()
+            let ruleI = ind' |> int
+            let rule = List.tryFind (fun (i', _) -> i' = ruleI) (snd rules)
+                    |> Option.defaultValue (0, TRule emptyTransformation)
+            let filteredRules = List.except [rule] (snd rules)
+            let newRules = filteredRules @ [rule]
+            setRules (fst rules, newRules)
+        | _ -> ()
 
     html
         $"""
         <div class=axis-rules>
-            <div>
-                {findAxisValueName <| fst rules}:
+            <div class=rule-container id={uuid}
+                @dragover={fun (ev : DragEvent) ->
+                    match validateData ev with
+                    | Some _ -> ev.preventDefault()
+                    | _ -> ()
+                }
+                @dragenter={onDragEnter}
+                @dragleave={onDragLeave false}
+                @drop={fun (ev : DragEvent) ->
+                    onDragLeave true ev
+                    onDropLast ev
+                }>
+                <p style="text-align: center;">{findAxisValueName <| fst rules}</p>
                 {LitBindings.repeat (snd rules,
                                     (fun r -> $"{fst r}"),
-                                    (fun r i -> html $"<div @rule-changed={(fun (ev : CustomEvent) ->
-                                                            let a = ev.detail :?> Rule
-                                                            replaceRule (fst r, a))}
-                                                        class={ruleParentClass}
+                                    (fun r _ -> html $"<div @rule-changed={fun (ev : CustomEvent) ->
+                                                            let rule = ev.detail :?> Rule
+                                                            replaceRule (fst r, rule)
+                                                        }
+                                                        @rule-type-changed={changeBackground}
+                                                        class={
+                                                                let classes = rulePresentAbsentClasses (snd r)
+                                                                [fst classes; ruleParentClass] |> String.concat space
+                                                        }
+                                                        @dragstart={fun (ev : DragEvent) ->
+                                                            ev.stopPropagation()
+                                                            ev.dataTransfer.effectAllowed <- moveEffect
+                                                            onDragStart (fst r) ev
+                                                        }
+                                                        @drop={fun (ev : DragEvent) ->
+                                                            onDragLeave true ev
+                                                            onDrop (fst r) ev
+                                                        }
+                                                        @dragover={fun (ev : DragEvent) ->
+                                                            match validateData ev with
+                                                            | Some _ -> ev.preventDefault()
+                                                            | _ -> ()
+                                                        }
+                                                        @dragenter={onDragEnter}
+                                                        @dragleave={onDragLeave false}
                                                         @rule-deleted={(fun _ -> deleteRule (fst r))}
                                                         draggable=true>
-                                                            {i+1}: {ruleElement r rootName}
+                                                            {ruleElement r rootName}
                                                     </div>"))
                 }
             </div>
@@ -674,7 +228,7 @@ and [<LitElement("axis-rules")>] AxisRules () =
                 @click={Ev(fun _ ->
                     let avid = fst rules
                     let newRules = snd rules |> List.map snd
-                    Lit.ofPromise(postAxisRules lid iid avid newRules, placeholder=loadingTemplate) |> Lit.render root
+                    Lit.ofPromise(postAxisRules  lid iid avid newRules, placeholder=loadingTemplate) |> Lit.render root
                 )}
             >Submit
             </button>
@@ -683,21 +237,82 @@ and [<LitElement("axis-rules")>] AxisRules () =
 
 and postOverrideRules lid iid newOverrideRules =
     promise {
-        do! server.postOverrideRules iid newOverrideRules |> Async.StartAsPromise
+        do! server.postOverrideRules getJWTCookie iid newOverrideRules |> Async.StartAsPromise
         return! rulesTemplate lid
     }
+
+and [<LitElement("axes-select")>] AxesSelect () =
+    let host, props =
+        LitElement.init (fun init ->
+            init.styles <- OnlineConlangFront.Shared.styles
+            init.props <- {|
+                inflectionAxes = Prop.Of(([] : ((int * string) list) list), attribute = "")
+                selectedAxes = Prop.Of(([] : (int * string) list), attribute = "")
+            |})
+
+    let selectedAxes, setSelectedAxes = Hook.useState props.selectedAxes.Value
+    let inflectionAxes = props.inflectionAxes.Value
+
+    let optionAxis i (v, axis) =
+        let selectedAxis = List.tryItem i selectedAxes
+        if Option.map fst selectedAxis = Some v then
+            html $"<option selected>{axis}</option>"
+        else
+            html $"<option>{axis}</option>"
+
+    let replaceAxis v newAxis =
+        let newSelectedAxes = selectedAxes |> List.mapi (fun i axis ->
+            if i = v then
+                let inflectionAxis = inflectionAxes |> List.tryItem v |> Option.defaultValue []
+                let newAxisValue = inflectionAxis
+                                   |> List.tryFind (fun (_, a') -> a' = newAxis)
+                                   |> Option.map fst
+                                   |> Option.defaultValue 0
+                (newAxisValue, newAxis)
+            else axis
+        )
+        setSelectedAxes newSelectedAxes
+        host.dispatchCustomEvent("axes-changed", newSelectedAxes |> List.map fst)
+
+    let selectStyle = "display: flex;"
+
+    html $"""
+        {inflectionAxes |> List.mapi (fun i axes ->
+            html  $"<div class=select style={selectStyle}>
+                        <select
+                            @change={fun (ev : Event) ->
+                                let newAxis = ev.target.Value
+                                replaceAxis i newAxis
+                            }>
+                            {axes |> List.map (fun axis -> optionAxis i axis)}
+                        </select>
+                    </div>"
+        )}
+    """
 
 and [<LitElement("override-rules")>] OverrideRules () =
     let _, props =
         LitElement.init (fun init ->
             init.styles <- [
+                yield! OnlineConlangFront.Shared.styles
+
                 css $"""
-                    table, td, th {{
-                        border: 1px solid;
-                        border-collapse: collapse;
+                    div.rule-container {{
                         padding: 5px 5px 5px 5px;
                     }}
 
+                    .rule-parent.dragover {{
+                        border-top: 2px dashed white;
+                    }}
+
+                    .rule-container.dragover {{
+                        border-bottom: 2px dashed white;
+                    }}
+
+                    .grid, .grid tr, .grid th, .grid td {{
+                        background-color: inherit !important;
+                        border: none;
+                    }}
                 """
             ]
             init.props <- {|
@@ -708,8 +323,6 @@ and [<LitElement("override-rules")>] OverrideRules () =
             |})
 
     let lid = props.language.Value
-    let sp = props.inflection.Value.speechPart
-    let classes = props.inflection.Value.classes |> Set.toSeq
     let iid = props.inflection.Value.id
 
     let inflectionAxesValues = props.inflection.Value.axes.axes |> List.map (fun a ->
@@ -719,14 +332,7 @@ and [<LitElement("override-rules")>] OverrideRules () =
         props.axesNames.Value |> List.tryFind (fun (k, _) -> k = avid)
                               |> Option.map snd |> Option.defaultValue ""
 
-    let findAxesValues (axesNames : string) =
-        let axesNameList = axesNames.Split(" ") |> Seq.toList
-        axesNameList |> List.map (fun name ->
-            props.axesNames.Value |> List.tryFind (fun (_, v) -> v = name)
-                                  |> Option.map fst |> Option.defaultValue 0
-        )
-
-    let axesCombined = cartesianN inflectionAxesValues |> List.map (List.map findAxisValueName >> List.distinct)
+    let axesCombined = inflectionAxesValues |> List.map (List.map (fun v -> (v, findAxisValueName v)))
 
     let overrideRules, setOverrideRules = Hook.useState props.overrideRules.Value
 
@@ -774,48 +380,141 @@ and [<LitElement("override-rules")>] OverrideRules () =
             | [] -> ungroupList xs
             | y::ys -> (k, y)::ungroupList ((k, ys)::xs)
 
-    let onDragStart i (ev : DragEvent) =
-        ev.dataTransfer.clearData() |> ignore
-        ev.dataTransfer.setData("text/plain", i.ToString())
 
-    let onDrop axes i (ev : DragEvent) =
-        ev.preventDefault()
-        let ruleI = ev.dataTransfer.getData("text") |> int
-        let newRules = overrideRules |> List.map (fun (axes', rules') ->
-            if axes' = axes then
-                let rule = List.tryFind (fun (i, _) -> i = ruleI) rules'
-                           |> Option.defaultValue (0, TRule emptyTransformation)
-                let filteredRules = List.except [rule] rules'
-                let ruleIndex = List.findIndex (fun (i', _) -> i' = i) filteredRules
-                let newRules = List.insertAt ruleIndex rule filteredRules
-                (axes', newRules)
-            else (axes', rules')
-        )
-        setOverrideRules newRules
+    let validateData (ev : DragEvent) uuid =
+        let data = ev.dataTransfer.getData("text").Split(",")
+        match data with
+        | [| uuid'; ind' |] when uuid' = uuid.ToString() -> Some ind'
+        | _ -> None
+
+    let onDragStart i uuid (ev : DragEvent) =
+        ev.dataTransfer.clearData() |> ignore
+        ev.dataTransfer.setData("text/plain", $"{uuid},{i}")
+
+    let onDrop axes i (ev : DragEvent) uuid =
+        match validateData ev uuid with
+        | Some ind' ->
+            ev.preventDefault()
+            let ruleI = ind' |> int
+            let newRules = overrideRules |> List.map (fun (axes', rules') ->
+                if axes' = axes then
+                    let orule = List.tryFind (fun (i, _) -> i = ruleI) rules'
+                    match orule with
+                    | None -> (axes', rules')
+                    | Some rule ->
+                        let filteredRules = List.except [rule] rules'
+                        let oruleIndex = List.tryFindIndex (fun (i', _) -> i' = i) filteredRules
+                        match oruleIndex with
+                        | None -> (axes', rules')
+                        |Some ruleIndex ->
+                            let newRules = List.insertAt ruleIndex rule filteredRules
+                            (axes', newRules)
+                else (axes', rules')
+            )
+            setOverrideRules newRules
+        | _ -> ()
 
     let ruleParentClass = "rule-parent"
     let moveEffect = "move"
     let rootName = "override-rules"
+    let dragoverClass = "dragover"
 
-    let rulesTemplate axes rules =
+    let rec removeClassAllParents (el : HTMLElement) cl =
+        el.classList.remove cl
+        match el.parentElement with
+        | null -> ()
+        | parent -> removeClassAllParents parent cl
+
+    let onDragEnter uuid (ev : DragEvent) =
+        match validateData ev uuid with
+        | Some _ ->
+            let el = ev.target :?> HTMLElement
+            if el.classList.contains "rule-container" || el.classList.contains "rule-parent" then
+                ev.stopPropagation()
+                el.classList.add dragoverClass
+        | _ -> ()
+
+    let onDragLeave uuid isDrop (ev : DragEvent) =
+        match validateData ev uuid with
+        | Some _ ->
+            let el = ev.target :?> HTMLElement
+            let rect = el.getBoundingClientRect()
+            let isInside = ev.clientX < rect.right
+                           && ev.clientX > rect.left
+                           && ev.clientY < rect.bottom
+                           && ev.clientY > rect.top
+            if isDrop then
+                removeClassAllParents el [| dragoverClass |]
+            else
+                if el.classList.contains "rule-parent" && (not isInside) then
+                    ev.stopPropagation()
+                    el.classList.remove dragoverClass
+                if el.classList.contains "rule-container" then
+                    ev.stopPropagation()
+                    el.classList.remove dragoverClass
+        | _ -> ()
+
+    let onDropLast axes (ev : DragEvent) uuid =
+        match validateData ev uuid with
+        | Some ind' ->
+            ev.preventDefault()
+            let ruleI = ind' |> int
+            let newRules = overrideRules |> List.map (fun (axes', rules') ->
+                if axes' = axes then
+                    let rule = List.tryFind (fun (i, _) -> i = ruleI) rules'
+                            |> Option.defaultValue (0, TRule emptyTransformation)
+                    let filteredRules = List.except [rule] rules'
+                    let newRules = filteredRules @ [rule]
+                    (axes', newRules)
+                else (axes', rules')
+            )
+            setOverrideRules newRules
+        | _ -> ()
+
+    let rulesTemplate axes rules uuid =
         html $"""
-            <div>
+            <div class=rule-container id={uuid}
+                @dragover={fun (ev : DragEvent) ->
+                    match validateData ev uuid with
+                    | Some _ -> ev.preventDefault()
+                    | _ -> ()
+                }
+                @drop={fun (ev : DragEvent) ->
+                    onDragLeave uuid true ev
+                    onDropLast axes ev uuid
+                }
+                @dragenter={onDragEnter uuid}
+                @dragleave={onDragLeave uuid false}>
             {LitBindings.repeat (rules,
                                 (fun r -> $"{fst r}"),
-                                (fun r i -> html $"<div @rule-changed={(fun (ev : CustomEvent) ->
-                                                        let a = ev.detail :?> Rule
-                                                        replaceOverrideRule axes (fst r, a))}
+                                (fun r _ -> html $"<div @rule-changed={(fun (ev : CustomEvent) ->
+                                                            let a = ev.detail :?> Rule
+                                                            replaceOverrideRule axes (fst r, a))
+                                                        }
                                                         @rule-deleted={fun _ -> deleteRule axes (fst r)}
-                                                        class={ruleParentClass}
+                                                        @rule-type-changed={changeBackground}
+                                                        class={
+                                                                let classes = rulePresentAbsentClasses (snd r)
+                                                                [fst classes; ruleParentClass] |> String.concat space
+                                                        }
                                                         draggable=true
                                                         @dragstart={fun (ev : DragEvent) ->
                                                             ev.stopPropagation()
                                                             ev.dataTransfer.effectAllowed <- moveEffect
-                                                            onDragStart (fst r) ev
+                                                            onDragStart (fst r) uuid ev
                                                         }
-                                                        @dragover={fun (ev : DragEvent) -> ev.preventDefault()}
-                                                        @drop={onDrop axes (fst r)}>
-                                                        {i+1}: {ruleElement r rootName}
+                                                        @dragover={fun (ev : DragEvent) ->
+                                                            match validateData ev uuid with
+                                                            | Some _ -> ev.preventDefault()
+                                                            | _ -> ()
+                                                        }
+                                                        @dragenter={onDragEnter uuid}
+                                                        @dragleave={onDragLeave uuid false}
+                                                        @drop={fun (ev : DragEvent) ->
+                                                            onDragLeave uuid true ev
+                                                            onDrop axes (fst r) ev uuid
+                                                        }>
+                                                        {ruleElement r rootName}
                                                     </div>"))
             }
             </div>
@@ -830,12 +529,6 @@ and [<LitElement("override-rules")>] OverrideRules () =
             >Add item</button>
         """
 
-    let axesOption axesNames a =
-        html $"""
-            <option ?selected={Set axesNames = Set a}>
-                {a |> String.concat " "}
-            </option>"""
-
     html $"""
         <table>
             <tr>
@@ -846,48 +539,51 @@ and [<LitElement("override-rules")>] OverrideRules () =
                                 (fun (axes, _) -> axes |> List.map (fun a -> a.ToString()) |> String.concat ""),
                                 fun (axes, rules) _ ->
                                     let axesNames = axes |> List.map findAxisValueName |> List.distinct
+                                    let uuid = Guid.NewGuid()
                                     html  $"<tr>
                                                 <td>
-                                                    <button
-                                                        @click={fun _ -> deleteAxes axes}>
-                                                        ❌
-                                                    </button>
-                                                    <select
-                                                        @change={fun (ev : CustomEvent) ->
-                                                            let newAxesNames = ev.target.Value
-                                                            let newAxes = findAxesValues newAxesNames
-                                                            replaceAxes axes newAxes
-                                                        }>
-                                                        {axesCombined |> List.map (fun a ->
-                                                            axesOption axesNames a
-                                                        )}
-                                                    </select>
+                                                    <table class=grid>
+                                                        <tr>
+                                                            <td>
+                                                                <button
+                                                                    @click={fun _ -> deleteAxes axes}>
+                                                                    ❌
+                                                                </button>
+                                                            </td>
+                                                            <td>
+                                                                <axes-select
+                                                                    @axes-changed={fun (ev : CustomEvent) ->
+                                                                        let newAxes = ev.detail :?> int list
+                                                                        replaceAxes axes newAxes
+                                                                    }
+                                                                    .inflectionAxes={axesCombined}
+                                                                    .selectedAxes={List.zip axes axesNames}>
+                                                                </axes-select>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
                                                 </td>
-                                                <td>{rulesTemplate axes rules}</td>
+                                                <td>
+                                                    {rulesTemplate axes rules uuid}
+                                                </td>
                                             </tr>"
                                 )}
-                <tr>
-                    <td>
-                        <button
-                            @click={fun _ -> addAxes ()}>
-                            Add axes
-                        </button>
-                        <button
-                            @click={fun _ -> window.alert(overrideRules.ToString())}>
-                            Get Rules
-                        </button>
-                        <button
-                            @click={fun _ ->
-                                let rulesNoInd = overrideRules |> List.map (fun (axes, rules) -> (axes, List.map snd rules))
-                                let ungroupedRules = ungroupList rulesNoInd |> List.map (fun (axes, r) ->
-                                    { overrideRule = r; overrideAxes = axes })
-                                Lit.ofPromise (postOverrideRules lid iid ungroupedRules, placeholder=loadingTemplate) |> Lit.render root
-                                }>
-                            Submit
-                        </button>
-                    </td>
-                </tr>
         </table>
+        <div style="position: sticky; bottom: 20px;">
+            <button
+                @click={fun _ -> addAxes ()}>
+                Add axes
+            </button>
+            <button
+                @click={fun _ ->
+                    let rulesNoInd = overrideRules |> List.map (fun (axes, rules) -> (axes, List.map snd rules))
+                    let ungroupedRules = ungroupList rulesNoInd |> List.map (fun (axes, r) ->
+                        { overrideRule = r; overrideAxes = axes })
+                    Lit.ofPromise (postOverrideRules lid iid ungroupedRules, placeholder=loadingTemplate) |> Lit.render root
+                    }>
+                Submit
+            </button>
+        </div>
     """
 
 and rulesTemplate lid  =
@@ -899,21 +595,16 @@ and rulesTemplate lid  =
                 $"""
                     <table class=inflections>
                         <tr>
-                            <th>Axis</th>
-                            <th>Inflections</th>
+                            <th>{axis.name}</th>
                         </tr>
-                        <tr>
-                            <td>{axis.name}</td>
-                            <td>{axis.inflections |> Map.map (
-                                    fun k v -> html $"<axis-rules
-                                                        language={lid}
-                                                        .inflection={inflection}
-                                                        .rules={(k, List.mapi (fun i r -> (i, r)) v)}
-                                                        .axesNames = {axes |> Seq.map (fun a -> a.values) |> Seq.concat |> Seq.toList}>
-                                                      </axis-rules>"
-                                ) |> Map.toList |> List.map snd}
-                            </td>
-                        </tr>
+                        {axis.inflections |> Map.map (
+                            fun k v -> html $"<tr><td><axis-rules
+                                                language={lid}
+                                                .inflection={inflection}
+                                                .rules={(k, List.mapi (fun i r -> (i, r)) v)}
+                                                .axesNames = {axes |> Seq.map (fun a -> a.values) |> Seq.concat |> Seq.toList}>
+                                                </axis-rules></td></tr>"
+                        ) |> Map.toList |> List.map snd}
                     </table>
                 """
         let classP cl = html $"<p>{cl}</p>"
