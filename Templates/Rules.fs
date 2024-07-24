@@ -604,7 +604,7 @@ and rulesTemplate lid  =
                                                 .rules={(k, List.mapi (fun i r -> (i, r)) v)}
                                                 .axesNames = {axes |> Seq.map (fun a -> a.values) |> Seq.concat |> Seq.toList}>
                                                 </axis-rules></td></tr>"
-                        ) |> Map.toList |> List.map snd}
+                            ) |> Map.toList |> List.map snd}
                     </table>
                 """
         let classP cl = html $"<p>{cl}</p>"

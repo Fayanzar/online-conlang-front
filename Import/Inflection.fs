@@ -65,6 +65,8 @@ let rec private mkHeaderAxes horAxesWithSpans n =
 let InflectionTable () =
     let _, props = LitElement.init (fun init ->
         init.styles <- [
+            yield! OnlineConlangFront.Shared.styles
+
             css $"""
                 .content {{
                     max-height: 0;

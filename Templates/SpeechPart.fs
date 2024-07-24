@@ -17,7 +17,10 @@ let rec SpeechPartTable () =
         init.props <- {|
             language = Prop.Of(0)
             speechParts = Prop.Of((Seq.empty : string seq), attribute="")
-        |})
+        |}
+        init.styles <- OnlineConlangFront.Shared.styles
+        )
+
 
     let spPairs = Seq.zip props.speechParts.Value props.speechParts.Value
     let speechParts, setSpeechParts = spPairs |> Seq.toList |> Hook.useState
@@ -75,7 +78,6 @@ and postSpeechPart lid sp =
 
 and putSpeechPart lid oldSP newSP =
     promise {
-        window.alert($"{lid} {oldSP} {newSP}")
         do! server.putSpeechPart getJWTCookie lid oldSP newSP |> Async.StartAsPromise
         return! speechPartTemplate lid
     }

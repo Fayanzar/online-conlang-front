@@ -1,6 +1,5 @@
 module OnlineConlangFront.Templates.Axes
 
-open Browser
 open Browser.Types
 open Lit
 
@@ -18,6 +17,7 @@ let rec AxisValues () =
             language = Prop.Of(0)
             axisValue = Prop.Of((0, ""))
         |}
+        init.styles <- OnlineConlangFront.Shared.styles
     )
 
     let axisValue, setAxisValue = Hook.useState props.axisValue.Value
@@ -47,6 +47,7 @@ and [<LitElement("add-axis-value")>] AddAxisValue () =
             language = Prop.Of(0)
             aid = Prop.Of(0)
         |}
+        init.styles <- OnlineConlangFront.Shared.styles
     )
 
     let lid = props.language.Value
@@ -70,6 +71,7 @@ and [<LitElement("add-axis")>] AddAxis () =
         init.props <- {|
             language = Prop.Of(0)
         |}
+        init.styles <- OnlineConlangFront.Shared.styles
     )
 
     let lid = props.language.Value
@@ -93,6 +95,7 @@ and [<LitElement("axes-table")>] AxesTable () =
             language = Prop.Of(0)
             axes = Prop.Of(([] : AxisForAPI list), attribute="")
         |}
+        init.styles <- OnlineConlangFront.Shared.styles
     )
 
     let lid = props.language.Value
@@ -153,10 +156,12 @@ and [<LitElement("drag-axes")>] DragAxesElement () =
             axes = Prop.Of(([] : AxisForAPI list), attribute="")
         |}
         init.styles <- [
+            yield! OnlineConlangFront.Shared.styles
+
             css $"""
                 div {{
                     width: 200px;
-                    background: lightgray;
+                    background: black;
                     margin: 10px;
                     padding: 10px;
                 }}

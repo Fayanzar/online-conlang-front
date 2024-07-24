@@ -9,6 +9,8 @@ open SharedModels
 open OnlineConlangFront.Foundation
 open OnlineConlangFront.Templates.Loading
 
+open Browser.Dom
+
 let emptyInflection = { inflectionSpeechPart = ""; inflectionAxes = []; inflectionClasses = []; inflectionName = None }
 
 [<LitElement("inflection-axes")>]
@@ -18,6 +20,7 @@ let InflectionAxes () =
             inflectionAxes = Prop.Of(([] : list<int>), attribute="")
             axes = Prop.Of(([] : list<int * string>), attribute="")
         |}
+        init.styles <- OnlineConlangFront.Shared.styles
     )
     let inflectionAxes, setInflectionAxes = Hook.useState props.inflectionAxes.Value
     let axes = props.axes.Value
@@ -31,22 +34,25 @@ let InflectionAxes () =
         axes |> List.tryFind (fun (_, axis) -> axis = name) |> Option.defaultValue (0, "")
 
     html $"""
-        {inflectionAxes |> List.map (fun iAxis ->
+        {inflectionAxes |> List.mapi (fun i iAxis ->
             html  $"<div>
+                        <div class=\"select\">
                         <select
                             @change={fun (ev : CustomEvent) ->
                                 let newAxis = ev.target.Value |> findAxisId |> fst
-                                let newAxes = inflectionAxes |> List.map (fun axis' ->
-                                    if iAxis = axis' then newAxis else axis'
+                                let newAxes = inflectionAxes |> List.mapi (fun i' axis' ->
+                                    if iAxis = axis' && i = i' then newAxis else axis'
                                 )
                                 setInflectionAxes newAxes
                                 onAxesChanged newAxes
                             }>
+                            <option>--Select axis--</option>
                             {axes |> List.map (fun axis -> axesOption iAxis axis)}
                         </select>
+                        </div>
                         <button
                             @click={fun _ ->
-                                let newAxes = inflectionAxes |> List.filter (fun i -> i <> iAxis)
+                                let newAxes = inflectionAxes |> List.removeAt i
                                 setInflectionAxes newAxes
                                 onAxesChanged newAxes
                             }>
@@ -62,7 +68,7 @@ let InflectionAxes () =
                     setInflectionAxes newAxes
                     onAxesChanged newAxes
                 }>
-                Add class
+                Add axis
             </button>
         </div>
     """
@@ -74,6 +80,7 @@ let InflectionClasses () =
             inflectionClasses = Prop.Of(([] : list<string>), attribute="")
             classes = Prop.Of(([] : list<string>), attribute="")
         |}
+        init.styles <- OnlineConlangFront.Shared.styles
     )
     let inflectionClasses, setInflectionClasses = Hook.useState props.inflectionClasses.Value
     let classes = props.classes.Value
@@ -84,21 +91,24 @@ let InflectionClasses () =
     let onClassesChanged newClasses = host.dispatchCustomEvent("classes-changed", newClasses)
 
     html $"""
-        {inflectionClasses |> List.map (fun iClass ->
+        {inflectionClasses |> List.mapi (fun i iClass ->
             html  $"<div>
+                        <div class=\"select\">
                         <select
                             @change={fun (ev : CustomEvent) ->
-                                let newClasses = inflectionClasses |> List.map (fun c' ->
-                                    if c' = iClass then ev.target.Value else c'
+                                let newClasses = inflectionClasses |> List.mapi (fun i' c' ->
+                                    if c' = iClass && i = i' then ev.target.Value else c'
                                 )
                                 setInflectionClasses newClasses
                                 onClassesChanged newClasses
                             }>
+                            <option>--Select class--</option>
                             {classes |> List.map (fun cl -> classOption iClass cl)}
                         </select>
+                        </div>
                         <button
                             @click={fun _ ->
-                                let newClasses = List.except [iClass] inflectionClasses
+                                let newClasses = inflectionClasses |> List.removeAt i
                                 setInflectionClasses newClasses
                                 onClassesChanged newClasses
                             }>
@@ -129,6 +139,7 @@ let rec InflectionElement () =
             classes = Prop.Of(([] : list<string>), attribute="")
             speechParts = Prop.Of(([] : seq<string>), attribute="")
         |}
+        init.styles <- OnlineConlangFront.Shared.styles
     )
 
     let lid = props.language.Value
@@ -171,6 +182,7 @@ let rec InflectionElement () =
                                     }>
                             </td>
                             <td>
+                                <div class=\"select\">
                                 <select
                                     @change={fun (ev : CustomEvent) ->
                                         let newInflection =
@@ -185,6 +197,7 @@ let rec InflectionElement () =
                                         spOption inflection.inflectionSpeechPart sp
                                     )}
                                 </select>
+                                </div>
                             </td>
                             <td>
                                 <inflection-classes
@@ -213,6 +226,7 @@ let rec InflectionElement () =
                                             ; inflectionClasses = inflection.inflectionClasses
                                             }
                                         setInflection k newInflection
+
                                     }
                                     .inflectionAxes={inflection.inflectionAxes}
                                     .axes={axes |> Seq.map (fun a -> (a.id, a.name)) |> Seq.toList}>
@@ -222,10 +236,8 @@ let rec InflectionElement () =
                                 <button
                                     @click={fun _ ->
                                         if k = 0 then
-                                            window.alert(inflection.ToString())
                                             Lit.ofPromise(postInflection lid inflection, placeholder=loadingTemplate) |> Lit.render root
                                         else
-                                            window.alert(inflection.ToString())
                                             Lit.ofPromise(putInflection lid k inflection, placeholder=loadingTemplate) |> Lit.render root
                                     }>
                                     Submit

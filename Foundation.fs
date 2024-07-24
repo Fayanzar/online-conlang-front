@@ -15,14 +15,6 @@ let server : IServer =
 
 let root = document.getElementById("root")
 
-// interface
-type Window =
-    // function description
-    abstract alert: ?message: string -> unit
-
-// wiring-up JavaScript and F# with [<Global>] and jsNative
-let [<Global>] window: Window = jsNative
-
 let getCookie name =
     let rawCookie = document.cookie
     let kvToPair kv =
@@ -35,7 +27,7 @@ let getCookie name =
     |> Map.tryFind name
 
 let setCookie name value =
-    document.cookie <- $"{name}={value}; SameSite=Lax"
+    document.cookie <- $"{name}={value}; SameSite=Lax; Path=/;"
 
 let getJWTCookie = getCookie "JWT" |> Option.defaultValue "" |> SecurityToken
 let setJWTCookie sjwt =
