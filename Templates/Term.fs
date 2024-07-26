@@ -181,9 +181,15 @@ let rec TermTable () =
                                 .termClasses={term.wordClasses |> Set.toList}>
                             </class-selector>
                         </td>
-                        <td>{match term.inflection with
-                                | Some termInflections -> List.map (wordInflectionTemplate axes) termInflections
-                                | None -> [empty]}</td>
+                        <td
+                            @term-changed={fun (ev : CustomEvent) ->
+                                let newTerm = ev.detail :?> TermForAPI
+                                setTerm newTerm
+                            }>
+                            {match term.inflection with
+                                | Some termInflections -> List.mapi (fun i inf -> wordInflectionTemplate term axes i inf) termInflections
+                                | None -> [empty]}
+                        </td>
                         <td>{term.transcription}</td>
                         <td>
                             {if not b then [refreshButton term] else []}

@@ -142,6 +142,8 @@ let rec InflectionElement () =
         init.styles <- OnlineConlangFront.Shared.styles
     )
 
+    let oldInflectionIndices = props.inflections.Value |> List.map fst
+
     let lid = props.language.Value
     let axes = props.axes.Value
     let classes = props.classes.Value
@@ -152,6 +154,10 @@ let rec InflectionElement () =
         let newInflections = inflections |> List.map (fun (k', i) ->
             if k' = k then (k, newInflection) else (k', i)
         )
+        setInflections newInflections
+
+    let removeInflection k =
+        let newInflections = inflections |> List.filter ((<>) k << fst)
         setInflections newInflections
 
     let spOption iSp sp = html $"<option ?selected={iSp = sp}>{sp}</option>"
@@ -193,6 +199,7 @@ let rec InflectionElement () =
                                             }
                                         setInflection k newInflection
                                     }>
+                                    <option>--Select part of speech--</option>
                                     {speechParts |> Seq.map (fun sp ->
                                         spOption inflection.inflectionSpeechPart sp
                                     )}
@@ -235,7 +242,17 @@ let rec InflectionElement () =
                             <td>
                                 <button
                                     @click={fun _ ->
-                                        if k = 0 then
+                                        if not (List.contains k oldInflectionIndices) then
+                                            removeInflection k
+                                        else
+                                            Lit.ofPromise(deleteInflection lid k, placeholder=loadingTemplate) |> Lit.render root
+                                    }>
+                                    ❌
+                                </button>
+                                <button
+                                    @click={fun _ ->
+                                        console.log inflection
+                                        if not (List.contains k oldInflectionIndices) then
                                             Lit.ofPromise(postInflection lid inflection, placeholder=loadingTemplate) |> Lit.render root
                                         else
                                             Lit.ofPromise(putInflection lid k inflection, placeholder=loadingTemplate) |> Lit.render root
@@ -249,7 +266,11 @@ let rec InflectionElement () =
         </table>
         <button
             @click={fun _ ->
-                setInflections (inflections @ [(0, emptyInflection)])
+                let maxInd =
+                    match inflections |> List.map fst with
+                    | [] -> 0
+                    | indices  -> List.max indices
+                setInflections (inflections @ [(maxInd + 1, emptyInflection)])
             }>
             Add inflection
         </button>
@@ -264,6 +285,12 @@ and putInflection lid iid inflection =
 and postInflection lid inflection =
     promise {
         do! server.postInflection getJWTCookie inflection |> Async.StartAsPromise
+        return! inflectionsTemplate lid
+    }
+
+and deleteInflection lid iid =
+    promise {
+        do! server.deleteInflection getJWTCookie iid |> Async.StartAsPromise
         return! inflectionsTemplate lid
     }
 

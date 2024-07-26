@@ -129,6 +129,12 @@ and [<LitElement("axes-table")>] AxesTable () =
                                     @keyup={fun (ev : CustomEvent) -> setAxis axis.id ev.target.Value}
                                     value={axis.name}>
                                 <button
+                                    @click={fun _ ->
+                                        Lit.ofPromise(deleteAxisName lid axis.id, placeholder=loadingTemplate) |> Lit.render root
+                                    }>
+                                    ❌
+                                </button>
+                                <button
                                     @click={fun _ -> Lit.ofPromise(putAxisName lid axis.id axis.name, placeholder=loadingTemplate)
                                                                     |> Lit.render root}>
                                     Submit
@@ -306,5 +312,11 @@ and putAxisName lid aid axis =
 and postAxisName lid axis =
     promise {
         do! server.postAxisName getJWTCookie lid axis |> Async.StartAsPromise
+        return! axesTemplate lid
+    }
+
+and deleteAxisName lid aid =
+    promise {
+        do! server.deleteAxisName getJWTCookie aid |> Async.StartAsPromise
         return! axesTemplate lid
     }
