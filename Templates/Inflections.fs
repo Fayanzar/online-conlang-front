@@ -251,7 +251,6 @@ let rec InflectionElement () =
                                 </button>
                                 <button
                                     @click={fun _ ->
-                                        console.log inflection
                                         if not (List.contains k oldInflectionIndices) then
                                             Lit.ofPromise(postInflection lid inflection, placeholder=loadingTemplate) |> Lit.render root
                                         else
