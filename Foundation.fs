@@ -1,15 +1,18 @@
 module OnlineConlangFront.Foundation
 
 open Browser
-open Fable.Core
 
 open SharedModels
 
 open Fable.Remoting.Client
 
+type Config = { baseUrl: string }
+
+let settings : Config = Fable.Core.JsInterop.importMember "./settings.js"
+
 let server : IServer =
     Remoting.createApi()
-    |> Remoting.withBaseUrl "https://localhost:5001"
+    |> Remoting.withBaseUrl settings.baseUrl
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.buildProxy<IServer>
 
