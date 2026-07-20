@@ -16,6 +16,7 @@ let emptyTerm id = { id = id
                    ; wordClasses = Set.empty
                    ; inflection = None
                    ; transcription = None
+                   ; translation = None
                    }
 
 [<LitElement("class-selector")>]
@@ -116,6 +117,7 @@ let rec TermTable () =
     "
 
     let empty = [ html $"" ]
+    let emptyString = ""
     html $"""
         <table>
             <tr>
@@ -123,6 +125,7 @@ let rec TermTable () =
                 <th>Word</th>
                 <th>Part of speech</th>
                 <th>Classes</th>
+                <th>Translation</th>
                 <th>Inflection</th>
                 <th>Transcription</th>
             </tr>
@@ -140,6 +143,7 @@ let rec TermTable () =
                                                   ; wordClasses = term.wordClasses
                                                   ; inflection = term.inflection
                                                   ; transcription = term.transcription
+                                                  ; translation = term.translation
                                                   }
                                     setTerm newTerm}>
                         </td>
@@ -154,6 +158,7 @@ let rec TermTable () =
                                             ; wordClasses = term.wordClasses
                                             ; inflection = term.inflection
                                             ; transcription = term.transcription
+                                            ; translation = term.translation
                                             }
                                     setTerm newTerm
                                 }>
@@ -174,12 +179,30 @@ let rec TermTable () =
                                             ; wordClasses = newClasses |> Set.ofList
                                             ; inflection = term.inflection
                                             ; transcription = term.transcription
+                                            ; translation = term.translation
                                             }
                                     setTerm newTerm
                                 }
                                 .classes={classes}
                                 .termClasses={term.wordClasses |> Set.toList}>
                             </class-selector>
+                        </td>
+                        <td>
+                            <input
+                                value={term.translation}
+                                @keyup={fun (ev : CustomEvent) ->
+                                    let newTranslation =
+                                        if ev.target.Value = emptyString then None
+                                                                         else Some ev.target.Value
+                                    let newTerm = { id = term.id
+                                                  ; word = term.word
+                                                  ; speechPart = term.speechPart
+                                                  ; wordClasses = term.wordClasses
+                                                  ; inflection = term.inflection
+                                                  ; transcription = term.transcription
+                                                  ; translation = newTranslation
+                                                  }
+                                    setTerm newTerm}>
                         </td>
                         <td
                             @term-changed={fun (ev : CustomEvent) ->

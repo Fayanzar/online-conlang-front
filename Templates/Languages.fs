@@ -1,6 +1,7 @@
 module OnlineConlangFront.Templates.Languages
 
 open Browser.Types
+open Browser.Dom
 open Lit
 
 open SharedModels

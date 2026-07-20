@@ -5,17 +5,17 @@ open Lit
 
 open OnlineConlangFront.Router.FormatExpressions
 
-let inline routef (path : PrintfFormat<_,_,_,_, 'T>)
+let routef (path : PrintfFormat<_,_,_,_, 'T>)
            (routeTemplate : 'T -> TemplateResult)
            (url : string)
            : TemplateResult Option =
     tryMatchInput path MatchOptions.Exact url |> Option.map routeTemplate
 
 let route (path : string)
-          (routeTemplate : TemplateResult)
+          (routeTemplate : unit -> TemplateResult)
           (url : string)
           : TemplateResult Option =
-    if path = url then Some routeTemplate else None
+    if path = url then Some (routeTemplate ()) else None
 
 type Router ( rootElement : string
             , routeUrls : (string -> Option<TemplateResult>) list

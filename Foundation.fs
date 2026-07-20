@@ -16,14 +16,14 @@ let server : IServer =
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.buildProxy<IServer>
 
-let root = document.getElementById("root")
+let root = document.getElementById "root"
 
 let getCookie name =
     let rawCookie = document.cookie
     let kvToPair kv =
         match kv with
-        | [| k; v|] -> (k, v)
-        | _         -> ("", "")
+        | [| k; v|] -> k, v
+        | _         -> "", ""
     rawCookie.Split("; ")
     |> Array.map (fun s -> s.Split '=' |> kvToPair)
     |> Map.ofArray
@@ -36,3 +36,5 @@ let getJWTCookie = getCookie "JWT" |> Option.defaultValue "" |> SecurityToken
 let setJWTCookie sjwt =
     let jwt = match sjwt with SecurityToken t -> t
     setCookie "JWT" jwt
+
+let inline konst k = fun _ -> k

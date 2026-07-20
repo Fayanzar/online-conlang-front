@@ -14,6 +14,7 @@ let emptyTerm id = { id = id
                    ; wordClasses = Set.empty
                    ; inflection = None
                    ; transcription = None
+                   ; translation = None
                    }
 
 let rec private mkSpans axes =
@@ -26,7 +27,7 @@ let rec cartesian p1 p2 =
     match p1, p2 with
     | _, [] -> []
     | [], _ -> []
-    | x::xs, _ -> (List.map (fun y -> x @ y) p2) @ (cartesian xs p2)
+    | x::xs, _ -> List.map (fun y -> x @ y) p2 @ cartesian xs p2
 
 let cartesianN l =
     let lWrapped = List.map (List.map (fun l1 -> [l1])) l
@@ -76,7 +77,7 @@ let private mkRows rowValues colValues inflection isEditing =
 let private mkPrefix rowValues verAxesWithSpans =
     let mutable rowValuesWithSpans = rowValues |> List.map (fun r -> List.zip r verAxesWithSpans)
     let rowLength = List.head rowValuesWithSpans |> List.length
-    for i in Seq.rev {0..(rowLength - 1)} do
+    for i in Seq.rev (seq {0..(rowLength - 1)}) do
         let rvwsNew = rowValuesWithSpans |> List.mapi
                         (fun j r ->
                             let (_, (_, span)) = List.item i r
@@ -213,6 +214,7 @@ let WordInflectionTable () =
                     ; transcription = term.transcription
                     ; word = term.word
                     ; wordClasses = term.wordClasses
+                    ; translation = term.translation
                     }
             setTerm newTerm
             host.dispatchCustomEvent ("term-changed", newTerm)
@@ -255,6 +257,7 @@ let WordInflectionTable () =
                     ; transcription = term.transcription
                     ; word = term.word
                     ; wordClasses = term.wordClasses
+                    ; translation = term.translation
                     }
             setTerm newTerm
             host.dispatchCustomEvent ("term-changed", newTerm)

@@ -23,7 +23,7 @@ open OnlineConlangFront.Templates.Classes
 
 let head = document.getElementById("header")
 
-let indexTemplate =
+let indexTemplate () =
     promise {
         let! langs = server.getLanguages |> Async.StartAsPromise
 
@@ -79,16 +79,16 @@ let accountDropdown () =
     promise {
         let! user = server.getUser getJWTCookie |> Async.StartAsPromise
         match user with
-        | (None, _) ->
+        | None, _ ->
             return html $"
                 <p><a href={loginHref}>Login</a></p>
                 <p><a href={registerHref}>Sign up</a></p>
             "
-        | (Some (_, username), isVerified) ->
+        | Some (_, username), isVerified ->
             if isVerified then
                 return html $"<p>Welcome, {username}!</p>
                              {logoutTemplate ()}"
-            else return html $"<p>Your account is not verified :(
+            else return html $"<p>Your account is not verified 😔
                                Please check your email inbox for the verification link!</p>
                                {sendVerificationEmailTemplate ()}"
     }
@@ -120,11 +120,11 @@ let homeTemplate () =
 
 let router = new Router
                 ( "root"
-                , [ route "/" <| Lit.ofPromise(indexTemplate, placeholder=loadingTemplate)
-                  ; route "/login" <| loginTemplate
-                  ; route "/signup" <| registerTemplate
-                  ; route "/verify" <| Lit.ofPromise(verifyTemplate (), placeholder=loadingTemplate)
-                  ; route "/languages" <| Lit.ofPromise(languagesTemplate (), placeholder=loadingTemplate)
+                , [ route "/" <| konst (Lit.ofPromise(indexTemplate (), placeholder=loadingTemplate))
+                  ; route "/login" <| konst loginTemplate
+                  ; route "/signup" <| konst registerTemplate
+                  ; route "/verify" <| konst (Lit.ofPromise(verifyTemplate (), placeholder=loadingTemplate))
+                  ; route "/languages" (fun _ -> Lit.ofPromise(languagesTemplate (), placeholder=loadingTemplate))
                   ; routef "/%i/rules" (fun lid -> Lit.ofPromise(rulesTemplate lid, placeholder=loadingTemplate))
                   ; routef "/%i/terms" (fun lid -> Lit.ofPromise(termsTemplate lid, placeholder=loadingTemplate))
                   ; routef "/%i/speechparts" (fun lid -> Lit.ofPromise(speechPartTemplate lid, placeholder=loadingTemplate))
@@ -135,4 +135,3 @@ let router = new Router
                 )
 
 Lit.ofPromise(homeTemplate (), placeholder=loadingTemplate) |> Lit.render head
-Lit.ofPromise(indexTemplate, placeholder=loadingTemplate) |> Lit.render root
