@@ -8,6 +8,7 @@ else
     exit 1
 fi
 
+rm -rf ./bin ./obj
 dotnet clean
 dotnet tool restore
 dotnet fable clean --yes
